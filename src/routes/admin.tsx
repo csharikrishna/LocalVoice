@@ -1,19 +1,22 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { collection, query, getDocs, orderBy, updateDoc, doc } from "firebase/firestore";
+import { collection, query, orderBy, updateDoc, doc, onSnapshot } from "firebase/firestore";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Image as ImageIcon } from "lucide-react";
+import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Image as ImageIcon, Search, Filter, X, AlertCircle, Wrench, CheckCircle2, BarChart3 } from "lucide-react";
 import * as XLSX from "xlsx";
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
+  getFilteredRowModel,
+  getPaginationRowModel,
   SortingState,
+  ColumnFiltersState,
   useReactTable,
 } from "@tanstack/react-table";
 
@@ -43,6 +46,7 @@ interface Complaint {
   status: string;
   timestamp: any;
   coordinates?: { lat: number; lng: number };
+  department?: string;
 }
 
 function AdminRouteWrapper() {
@@ -108,9 +112,6 @@ function AdminRouteWrapper() {
 }
 
 function AdminLogin() {
-  const defaultUsername = import.meta.env.VITE_ADMIN_USERNAME || "";
-  const defaultPassword = import.meta.env.VITE_ADMIN_PASSWORD || "";
-
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -127,16 +128,7 @@ function AdminLogin() {
     try {
       await signInWithEmailAndPassword(auth, adminEmail, password);
     } catch (err: any) {
-      if (username === defaultUsername && password === defaultPassword && defaultUsername) {
-        try {
-          const { createUserWithEmailAndPassword } = await import("firebase/auth");
-          await createUserWithEmailAndPassword(auth, adminEmail, password);
-        } catch (createErr: any) {
-          setError("Failed to auto-create admin account: " + createErr.message);
-        }
-      } else {
-        setError("Invalid credentials or account does not exist.");
-      }
+      setError("Invalid credentials. Please check your username and password.");
     } finally {
       setLoading(false);
     }
@@ -265,43 +257,74 @@ function AdminDashboard() {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [sorting, setSorting] = useState<SortingState>([]);
+  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
+  const [globalFilter, setGlobalFilter] = useState("");
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
+  // Real-time Firestore listener
   useEffect(() => {
-    async function fetchComplaints() {
-      try {
-        const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
-        setComplaints(data);
-      } catch (error) {
-        console.error("Error fetching complaints:", error);
-      } finally {
-        setLoading(false);
-      }
-    }
-    fetchComplaints();
+    const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
+    const unsubscribe = onSnapshot(q, (snapshot) => {
+      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
+      setComplaints(data);
+      setLoading(false);
+    }, (error) => {
+      console.error("Error listening to complaints:", error);
+      setLoading(false);
+    });
+    return () => unsubscribe();
   }, []);
 
-  const handleLogout = () => {
-    signOut(auth);
+  // Derived filtered data
+  const filteredComplaints = complaints.filter(c => {
+    if (statusFilter !== "all" && c.status !== statusFilter) return false;
+    if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
+    if (globalFilter) {
+      const search = globalFilter.toLowerCase();
+      return (
+        (c.token || "").toLowerCase().includes(search) ||
+        c.description.toLowerCase().includes(search) ||
+        c.location.toLowerCase().includes(search) ||
+        c.category.toLowerCase().includes(search)
+      );
+    }
+    return true;
+  });
+
+  // Analytics
+  const stats = {
+    total: complaints.length,
+    open: complaints.filter(c => c.status === "open").length,
+    working: complaints.filter(c => c.status === "working").length,
+    closed: complaints.filter(c => c.status === "closed").length,
   };
+
+  const uniqueCategories = [...new Set(complaints.map(c => c.category))].sort();
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, "complaints", id), { status: newStatus });
-      setComplaints(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
     } catch (err) {
       console.error("Failed to update status", err);
-      alert("Failed to update status. Please try again.");
+    }
+  };
+
+  const handleDepartmentChange = async (id: string, newDepartment: string) => {
+    try {
+      await updateDoc(doc(db, "complaints", id), { department: newDepartment });
+    } catch (err) {
+      console.error("Failed to update department", err);
     }
   };
 
   const exportToExcel = () => {
-    const exportData = complaints.map(c => ({
+    const exportData = filteredComplaints.map(c => ({
       Token: c.token || "N/A",
       Category: c.category,
+      Department: c.department || "Unassigned",
       Status: c.status,
       Location: c.location,
       Latitude: c.coordinates?.lat || "",
@@ -314,7 +337,7 @@ function AdminDashboard() {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
-    XLSX.writeFile(workbook, `civicscan_complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
   const columns = [
@@ -350,18 +373,46 @@ function AdminDashboard() {
       header: "Status",
       cell: info => (
         <select 
-          value={info.getValue()}
+          value={info.getValue() || "open"}
           onChange={(e) => handleStatusChange(info.row.original.id, e.target.value)}
           onClick={(e) => e.stopPropagation()}
-          className="text-sm border border-gray-200 rounded px-2 py-1 bg-white focus:outline-none focus:ring-1 focus:ring-blue-500 capitalize"
+          className="text-xs font-bold border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
           style={{
             color: info.getValue() === "open" ? "#dc2626" : info.getValue() === "working" ? "#d97706" : "#16a34a",
-            fontWeight: 500
+            backgroundColor: info.getValue() === "open" ? "#fef2f2" : info.getValue() === "working" ? "#fffbeb" : "#f0fdf4",
+            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+            backgroundPosition: "right 0.25rem center",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "1.25em 1.25em",
           }}
         >
           <option value="open">Open</option>
-          <option value="working">Working</option>
+          <option value="working">In Progress</option>
           <option value="closed">Closed</option>
+        </select>
+      ),
+    }),
+    columnHelper.accessor("department", {
+      header: "Department",
+      cell: info => (
+        <select 
+          value={info.getValue() || ""}
+          onChange={(e) => handleDepartmentChange(info.row.original.id, e.target.value)}
+          onClick={(e) => e.stopPropagation()}
+          className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
+          style={{
+            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+            backgroundPosition: "right 0.25rem center",
+            backgroundRepeat: "no-repeat",
+            backgroundSize: "1.25em 1.25em",
+          }}
+        >
+          <option value="">Unassigned</option>
+          <option value="Sanitation">Sanitation</option>
+          <option value="Electrical">Electrical</option>
+          <option value="Water Board">Water Board</option>
+          <option value="Public Works">Public Works</option>
+          <option value="Parks">Parks & Rec</option>
         </select>
       ),
     }),
@@ -388,7 +439,7 @@ function AdminDashboard() {
   ];
 
   const table = useReactTable({
-    data: complaints,
+    data: filteredComplaints,
     columns,
     state: {
       sorting,
@@ -396,11 +447,17 @@ function AdminDashboard() {
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
+    getFilteredRowModel: getFilteredRowModel(),
+    getPaginationRowModel: getPaginationRowModel(),
+    initialState: {
+      pagination: { pageSize: 15 },
+    },
   });
 
   const defaultCenter: [number, number] = [20.5937, 78.9629];
-  const mapCenter = focusedLocation || (complaints.find(c => c.coordinates)?.coordinates 
-    ? [complaints.find(c => c.coordinates)!.coordinates!.lat, complaints.find(c => c.coordinates)!.coordinates!.lng] as [number, number]
+  const complaintsWithCoords = filteredComplaints.filter(c => c.coordinates);
+  const mapCenter = focusedLocation || (complaintsWithCoords.length > 0
+    ? [complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [number, number]
     : defaultCenter);
 
   return (
@@ -408,21 +465,101 @@ function AdminDashboard() {
       <div className="mb-6 flex justify-between items-end flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2 text-[color:var(--text-primary)]">Admin Dashboard</h1>
-          <p className="text-[color:var(--text-secondary)]">Manage civic issues and export analytical data.</p>
+          <p className="text-[color:var(--text-secondary)]">Real-time civic issue management and analytics.</p>
         </div>
         <div className="flex items-center gap-3">
           <button 
-            onClick={exportToExcel}
+            onClick={async () => { const XLSX = await import("xlsx"); const exportData = filteredComplaints.map(c => ({ Token: c.token || "N/A", Category: c.category, Status: c.status, Location: c.location, Latitude: c.coordinates?.lat || "", Longitude: c.coordinates?.lng || "", Description: c.description, Date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "", Photo: c.photoURL || "No Photo" })); const worksheet = XLSX.utils.json_to_sheet(exportData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints"); XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`); }}
             className="flex items-center gap-2 text-sm text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors shadow-sm font-medium"
           >
             <Download size={16} /> Export to Excel
           </button>
           <button 
-            onClick={handleLogout}
+            onClick={() => signOut(auth)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-4 py-2 rounded-lg transition-colors shadow-sm"
           >
             <LogOut size={16} /> Sign Out
           </button>
+        </div>
+      </div>
+
+      {/* Analytics Cards */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+        <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm">
+          <div className="flex items-center gap-2 text-gray-500 text-sm font-medium mb-1">
+            <BarChart3 size={16} /> Total Reports
+          </div>
+          <div className="text-3xl font-bold text-gray-900">{stats.total}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-red-100 shadow-sm">
+          <div className="flex items-center gap-2 text-red-500 text-sm font-medium mb-1">
+            <AlertCircle size={16} /> Open
+          </div>
+          <div className="text-3xl font-bold text-red-600">{stats.open}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-amber-100 shadow-sm">
+          <div className="flex items-center gap-2 text-amber-500 text-sm font-medium mb-1">
+            <Wrench size={16} /> In Progress
+          </div>
+          <div className="text-3xl font-bold text-amber-600">{stats.working}</div>
+        </div>
+        <div className="bg-white rounded-xl p-4 border border-green-100 shadow-sm">
+          <div className="flex items-center gap-2 text-green-500 text-sm font-medium mb-1">
+            <CheckCircle2 size={16} /> Resolved
+          </div>
+          <div className="text-3xl font-bold text-green-600">{stats.closed}</div>
+        </div>
+      </div>
+
+      {/* Filters Bar */}
+      <div className="bg-white rounded-xl p-4 border border-gray-100 shadow-sm mb-6 flex flex-wrap items-center gap-3">
+        <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
+          <Filter size={16} /> Filters:
+        </div>
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Filter by status"
+        >
+          <option value="all">All Statuses</option>
+          <option value="open">Open</option>
+          <option value="working">In Progress</option>
+          <option value="closed">Resolved</option>
+        </select>
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
+          aria-label="Filter by category"
+        >
+          <option value="all">All Categories</option>
+          {uniqueCategories.map(cat => (
+            <option key={cat} value={cat}>{cat}</option>
+          ))}
+        </select>
+        <div className="flex-1 min-w-[200px] relative">
+          <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+          <input
+            type="text"
+            value={globalFilter}
+            onChange={(e) => setGlobalFilter(e.target.value)}
+            placeholder="Search by token, description, or location…"
+            className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            aria-label="Search complaints"
+          />
+          {globalFilter && (
+            <button
+              onClick={() => setGlobalFilter("")}
+              className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+              aria-label="Clear search"
+            >
+              <X size={16} />
+            </button>
+          )}
+        </div>
+        <div className="text-sm text-gray-500">
+          {filteredComplaints.length} of {complaints.length} results
         </div>
       </div>
 
@@ -434,13 +571,13 @@ function AdminDashboard() {
               <Loader2 className="animate-spin text-blue-600" size={32} />
             </div>
           ) : (
-            <MapContainer center={mapCenter} zoom={12} scrollWheelZoom={true} className="w-full h-full absolute inset-0 z-0">
+            <MapContainer center={mapCenter} zoom={12} scrollWheelZoom={false} className="w-full h-full absolute inset-0 z-0">
               <MapFlyTo center={focusedLocation} />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {complaints.filter(c => c.coordinates).map((c) => (
+              {filteredComplaints.filter(c => c.coordinates).map((c) => (
                 <Marker 
                   key={c.id} 
                   position={[c.coordinates!.lat, c.coordinates!.lng]}
@@ -472,14 +609,20 @@ function AdminDashboard() {
         <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
             <h2 className="font-semibold text-gray-800">All Complaints Database</h2>
-            <span className="text-sm text-gray-500">{complaints.length} Total Records</span>
+            <span className="text-sm text-gray-500">{filteredComplaints.length} of {complaints.length} Records</span>
           </div>
           
           <div className="overflow-x-auto">
             {loading ? (
                <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
-            ) : complaints.length === 0 ? (
-              <div className="text-center py-12 text-gray-500">No records found.</div>
+            ) : filteredComplaints.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-3">
+                  <Search size={24} className="text-gray-400" />
+                </div>
+                <p className="text-gray-500 font-medium">No complaints match your filters.</p>
+                <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filter criteria.</p>
+              </div>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -505,7 +648,8 @@ function AdminDashboard() {
                     <tr 
                       key={row.id} 
                       className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                      onClick={() => {
+                      onClick={(e) => {
+                        if ((e.target as HTMLElement).tagName.toLowerCase() === 'select') return;
                         const coords = row.original.coordinates;
                         if (coords) setFocusedLocation([coords.lat, coords.lng]);
                       }}
@@ -521,25 +665,59 @@ function AdminDashboard() {
               </table>
             )}
           </div>
+          
+          {/* Pagination Controls */}
+          {filteredComplaints.length > 0 && (
+            <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between">
+              <div className="text-sm text-gray-500">
+                Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filteredComplaints.length)} of {filteredComplaints.length} entries
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => table.previousPage()}
+                  disabled={!table.getCanPreviousPage()}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Previous
+                </button>
+                <div className="text-sm text-gray-600 font-medium px-2">
+                  Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
+                </div>
+                <button
+                  onClick={() => table.nextPage()}
+                  disabled={!table.getCanNextPage()}
+                  className="px-3 py-1.5 text-sm font-medium text-gray-600 bg-white border border-gray-200 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Next
+                </button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Lightbox Modal */}
       {lightboxImage && (
         <div 
+          role="dialog"
+          aria-modal="true"
+          aria-label="Enlarged complaint photo"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setLightboxImage(null)}
+          onKeyDown={(e) => { if (e.key === 'Escape') setLightboxImage(null); }}
         >
           <div className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center">
             <button 
               className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 text-xl font-bold bg-black/50 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
               onClick={() => setLightboxImage(null)}
+              autoFocus
+              aria-label="Close image viewer"
             >
               ✕
             </button>
             <img 
               src={lightboxImage} 
-              alt="Enlarged complaint" 
+              alt="Enlarged complaint photo" 
               className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
               onClick={(e) => e.stopPropagation()} 
             />

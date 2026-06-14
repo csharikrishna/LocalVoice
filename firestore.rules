@@ -12,7 +12,8 @@ service cloud.firestore {
         'category', 'location', 'description', 'timestamp', 'status', 'priority'
       ]) && 
       request.resource.data.category in [
-        'Streetlight', 'Water', 'Garbage', 'Roads', 'Other'
+        'Streetlight', 'Water', 'Garbage', 'Roads', 'Drainage',
+        'Electricity', 'Encroachment', 'Public Toilet', 'Park/Garden', 'Other'
       ] &&
       request.resource.data.status == 'open' &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
@@ -28,10 +29,13 @@ service cloud.firestore {
               request.resource.data.photoURL.matches('https://.*\\.(firebasestorage\\.app|cloudinary\\.com)/.*'));
     }
 
-    function isNotTooFrequent() {
-      // Allow up to 5 complaints per minute per IP (client-side rate limiting is primary)
-      // This is a basic server-side safeguard
-      return true; // Adjust based on your needs
+    function isAdmin() {
+      return request.auth != null && request.auth.token.admin == true;
+    }
+
+    function isOnlyUpvoting() {
+      return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes']) &&
+             request.resource.data.upvotes == (resource.data.upvotes > 0 ? resource.data.upvotes : 0) + 1;
     }
 
     // ============================================
@@ -42,14 +46,14 @@ service cloud.firestore {
       // Anyone can read complaints (for the public map)
       allow read: if true;
       
-      // Admins (any authenticated user) can update or delete
-      allow update, delete: if request.auth != null;
+      // Admins can fully update/delete. Public users can ONLY upvote.
+      allow delete: if isAdmin();
+      allow update: if isAdmin() || isOnlyUpvoting();
       
       // Anonymous users can create new complaints
       allow create: if 
         isValidComplaint() && 
-        isValidPhotoURL() &&
-        isNotTooFrequent();
+        isValidPhotoURL();
     }
 
     // ============================================

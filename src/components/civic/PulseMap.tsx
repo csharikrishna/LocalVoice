@@ -126,17 +126,18 @@ function FloatCard({
 }) {
   return (
     <div
-      className="absolute hidden sm:flex items-center gap-2.5 bg-white rounded-[16px] px-3.5 py-2.5"
+      className="absolute flex items-center gap-2 sm:gap-2.5 bg-white rounded-[12px] sm:rounded-[16px] px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 scale-[0.85] sm:scale-100 origin-center"
       style={{
         top, left, right, bottom,
         boxShadow: "var(--shadow-md)",
         animation: `float-y 3s ease-in-out ${delay}s infinite`,
+        whiteSpace: "nowrap",
       }}
     >
-      <span className={`inline-block w-2 h-2 rounded-full ${dot}`} />
+      <span className={`inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${dot}`} />
       <div className="leading-tight">
-        <div className="text-[11px] font-semibold text-[color:var(--text-primary)]">{title}</div>
-        <div className="text-[11px] text-[color:var(--text-muted)]">{sub}</div>
+        <div className="text-[10px] sm:text-[11px] font-semibold text-[color:var(--text-primary)]">{title}</div>
+        <div className="text-[9px] sm:text-[11px] text-[color:var(--text-muted)]">{sub}</div>
       </div>
     </div>
   );

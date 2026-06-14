@@ -9,11 +9,11 @@ export function Footer() {
         <div className="col-span-2 lg:col-span-1">
           <div className="flex items-center gap-2.5 text-white">
             <Logo />
-            <span className="font-semibold">CivicScan</span>
+            <span className="font-semibold">LocalVoice</span>
           </div>
           <p className="mt-3 text-sm">Smarter communities start with a scan.</p>
           <a
-            href="https://github.com"
+            href="https://github.com/csharikrishna/LocalVoice"
             target="_blank" rel="noopener noreferrer"
             className="inline-flex items-center justify-center w-9 h-9 rounded-[10px] mt-5 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="GitHub"
@@ -56,7 +56,7 @@ export function Footer() {
 
       <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
         <div className="container-x py-5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <span>© {new Date().getFullYear()} CivicScan. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} LocalVoice. All rights reserved.</span>
           <span>Verified under APSCHE Community Service Guidelines.</span>
         </div>
       </div>

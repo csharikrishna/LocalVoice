@@ -47,5 +47,4 @@ export const storage = getStorage(app);
 // Initialize Auth
 export const auth = getAuth(app);
 
-// Health check
-console.log(`✓ Firebase initialized for project: ${firebaseConfig.projectId}`);
+// Firebase initialized successfully

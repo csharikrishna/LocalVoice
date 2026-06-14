@@ -9,13 +9,20 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TrackRouteImport } from './routes/track'
 import { Route as TechRouteImport } from './routes/tech'
 import { Route as ResearchRouteImport } from './routes/research'
 import { Route as PrintQrRouteImport } from './routes/print-qr'
+import { Route as MapRouteImport } from './routes/map'
 import { Route as ImpactRouteImport } from './routes/impact'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
+const TrackRoute = TrackRouteImport.update({
+  id: '/track',
+  path: '/track',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const TechRoute = TechRouteImport.update({
   id: '/tech',
   path: '/tech',
@@ -29,6 +36,11 @@ const ResearchRoute = ResearchRouteImport.update({
 const PrintQrRoute = PrintQrRouteImport.update({
   id: '/print-qr',
   path: '/print-qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MapRoute = MapRouteImport.update({
+  id: '/map',
+  path: '/map',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ImpactRoute = ImpactRouteImport.update({
@@ -51,53 +63,86 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/impact': typeof ImpactRoute
+  '/map': typeof MapRoute
   '/print-qr': typeof PrintQrRoute
   '/research': typeof ResearchRoute
   '/tech': typeof TechRoute
+  '/track': typeof TrackRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/impact': typeof ImpactRoute
+  '/map': typeof MapRoute
   '/print-qr': typeof PrintQrRoute
   '/research': typeof ResearchRoute
   '/tech': typeof TechRoute
+  '/track': typeof TrackRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/impact': typeof ImpactRoute
+  '/map': typeof MapRoute
   '/print-qr': typeof PrintQrRoute
   '/research': typeof ResearchRoute
   '/tech': typeof TechRoute
+  '/track': typeof TrackRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/admin' | '/impact' | '/print-qr' | '/research' | '/tech'
+  fullPaths:
+    | '/'
+    | '/admin'
+    | '/impact'
+    | '/map'
+    | '/print-qr'
+    | '/research'
+    | '/tech'
+    | '/track'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/impact' | '/print-qr' | '/research' | '/tech'
+  to:
+    | '/'
+    | '/admin'
+    | '/impact'
+    | '/map'
+    | '/print-qr'
+    | '/research'
+    | '/tech'
+    | '/track'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/impact'
+    | '/map'
     | '/print-qr'
     | '/research'
     | '/tech'
+    | '/track'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   ImpactRoute: typeof ImpactRoute
+  MapRoute: typeof MapRoute
   PrintQrRoute: typeof PrintQrRoute
   ResearchRoute: typeof ResearchRoute
   TechRoute: typeof TechRoute
+  TrackRoute: typeof TrackRoute
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/track': {
+      id: '/track'
+      path: '/track'
+      fullPath: '/track'
+      preLoaderRoute: typeof TrackRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/tech': {
       id: '/tech'
       path: '/tech'
@@ -117,6 +162,13 @@ declare module '@tanstack/react-router' {
       path: '/print-qr'
       fullPath: '/print-qr'
       preLoaderRoute: typeof PrintQrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/map': {
+      id: '/map'
+      path: '/map'
+      fullPath: '/map'
+      preLoaderRoute: typeof MapRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/impact': {
@@ -147,9 +199,11 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   ImpactRoute: ImpactRoute,
+  MapRoute: MapRoute,
   PrintQrRoute: PrintQrRoute,
   ResearchRoute: ResearchRoute,
   TechRoute: TechRoute,
+  TrackRoute: TrackRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

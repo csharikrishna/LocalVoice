@@ -7,6 +7,8 @@ const links = [
   { label: "Impact", to: "/impact" as const },
   { label: "Research", to: "/research" as const },
   { label: "Tech", to: "/tech" as const },
+  { label: "Track Report", to: "/track" as const },
+  { label: "Live Map", to: "/map" as const },
 ];
 
 export function Nav() {
@@ -85,7 +87,7 @@ export function Nav() {
         id="mobile-menu"
         className="lg:hidden overflow-hidden transition-[max-height,opacity] duration-300"
         style={{
-          maxHeight: open ? 480 : 0,
+          maxHeight: open ? 600 : 0,
           opacity: open ? 1 : 0,
           borderTop: open ? "1px solid var(--border)" : "1px solid transparent",
           background: "rgba(255,255,255,0.98)",

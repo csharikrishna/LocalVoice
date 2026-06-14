@@ -1,7 +1,7 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   QrCode, MapPin, CheckCircle2, Zap, Camera, FolderTree,
-  LayoutDashboard, Bell, Database, WifiOff,
+  LayoutDashboard, Search, Database, ShieldCheck,
   ArrowRight, Sparkles, Printer
 } from "lucide-react";
 import { PulseMap } from "@/components/civic/PulseMap";
@@ -214,18 +214,18 @@ function HowItWorks() {
 /* ---------------- REPORT ---------------- */
 function ReportSection() {
   return (
-    <section id="report" className="relative overflow-hidden">
+    <section className="relative overflow-hidden">
       <div className="absolute inset-y-0 right-0 w-full lg:w-[45%]" style={{ background: "var(--primary)" }} aria-hidden="true" />
       <div className="container-x relative grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 section-y items-center">
         <div>
           <Reveal><span className="eyebrow">Report an issue</span></Reveal>
           <Reveal delay={80}>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-white lg:text-[color:var(--text-primary)]" style={{ letterSpacing: "-0.03em" }}>
               It's as easy as sending a WhatsApp message.
             </h2>
           </Reveal>
           <Reveal delay={160}>
-            <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7] max-w-[520px]">
+            <p className="mt-5 text-lg text-slate-300 lg:text-[color:var(--text-secondary)] leading-[1.7] max-w-[520px]">
               Pick a category, confirm your auto-detected location, drop a quick description.
               That's it — your complaint goes straight to the right department.
             </p>
@@ -237,7 +237,7 @@ function ReportSection() {
                 "No account or login required",
                 "Live status tracking after submission",
               ].map((t) => (
-                <li key={t} className="flex items-start gap-3 text-base text-[color:var(--text-primary)]">
+                <li key={t} className="flex items-start gap-3 text-base text-slate-200 lg:text-[color:var(--text-primary)]">
                   <CheckCircle2 size={20} className="text-[color:var(--success)] shrink-0 mt-0.5" />
                   <span>{t}</span>
                 </li>
@@ -246,8 +246,8 @@ function ReportSection() {
           </Reveal>
         </div>
 
-        <div className="flex justify-center lg:justify-end">
-          <Reveal delay={180} className="w-full max-w-xl">
+        <div id="report" className="flex justify-center lg:justify-end min-w-0 w-full scroll-mt-24">
+          <Reveal delay={180} className="w-full max-w-xl min-w-0">
             <ComplaintForm />
           </Reveal>
         </div>
@@ -261,11 +261,11 @@ const features = [
   { icon: Zap, title: "Instant QR scanning", body: "No app download. Just a camera." },
   { icon: MapPin, title: "GPS auto-location", body: "Pinpoint-accurate coordinates captured the moment the form opens. No typing, no guessing.", featured: true },
   { icon: Camera, title: "Photo evidence", body: "Attach a photo directly from your phone camera." },
-  { icon: FolderTree, title: "Smart categorization", body: "Issues auto-routed to the right department." },
+  { icon: FolderTree, title: "Smart categorization", body: "10 issue categories routed to the right department." },
   { icon: LayoutDashboard, title: "Admin dashboard", body: "Live map, analytics, and resolution tracking." },
-  { icon: Bell, title: "Status notifications", body: "Know when your issue is fixed." },
+  { icon: Search, title: "Track your report", body: "Look up your complaint status anytime with your tracking token." },
   { icon: Database, title: "Digital audit trail", body: "Every complaint stored, timestamped, searchable." },
-  { icon: WifiOff, title: "Works offline", body: "Forms cache locally; submits when connection returns." },
+  { icon: ShieldCheck, title: "Privacy first", body: "No account required. No personal data collected. Fully anonymous." },
 ];
 
 function Features() {

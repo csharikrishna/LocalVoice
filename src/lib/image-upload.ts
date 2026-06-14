@@ -22,7 +22,7 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
   }
 
   // Check file type
-  if (!IMAGE_CONFIG.ALLOWED_TYPES.includes(file.type)) {
+  if (!(IMAGE_CONFIG.ALLOWED_TYPES as readonly string[]).includes(file.type)) {
     return {
       valid: false,
       error: `Invalid file type. Allowed: ${IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(", ")}`,
