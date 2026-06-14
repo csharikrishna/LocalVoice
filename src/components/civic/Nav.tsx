@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Menu, X } from "lucide-react";
+import { Menu, X, Printer } from "lucide-react";
 
 const links = [
   { label: "Home", to: "/" as const },
@@ -35,7 +35,7 @@ export function Nav() {
       <div className="container-x flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2.5">
           <Logo />
-          <span className="font-semibold text-[color:var(--text-primary)] tracking-tight">CivicScan</span>
+          <span className="font-semibold text-[color:var(--text-primary)] tracking-tight">LocalVoice</span>
         </Link>
 
         <ul className="hidden lg:flex items-center gap-8">
@@ -54,6 +54,13 @@ export function Nav() {
         </ul>
 
         <div className="flex items-center gap-3">
+          <Link
+            to="/print-qr"
+            className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--primary)] bg-[color:var(--primary-tint)] border border-[color:var(--primary)] hover:bg-white px-4 py-2 rounded-[10px] transition-all hover:-translate-y-px"
+          >
+            <Printer size={16} />
+            Print QR
+          </Link>
           <Link
             to="/"
             hash="report"
@@ -104,6 +111,30 @@ export function Nav() {
               </Link>
             </li>
           ))}
+          <li className="pt-4 pb-2 flex flex-col gap-3"
+              style={{
+                opacity: open ? 1 : 0,
+                transform: open ? "translateY(0)" : "translateY(-6px)",
+                transition: `all 0.3s ease ${links.length * 60}ms`,
+              }}
+          >
+            <Link
+              to="/"
+              hash="report"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center w-full text-base font-bold text-white bg-[color:var(--primary)] py-3.5 rounded-[12px]"
+            >
+              Report a Problem
+            </Link>
+            <Link
+              to="/print-qr"
+              onClick={() => setOpen(false)}
+              className="flex items-center justify-center w-full gap-2 text-base font-bold text-[color:var(--primary)] bg-[color:var(--primary-tint)] border border-[color:var(--primary)] py-3.5 rounded-[12px]"
+            >
+              <Printer size={18} />
+              Print QR Poster
+            </Link>
+          </li>
         </ul>
       </div>
     </nav>

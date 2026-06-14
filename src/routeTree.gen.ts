@@ -11,7 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TechRouteImport } from './routes/tech'
 import { Route as ResearchRouteImport } from './routes/research'
+import { Route as PrintQrRouteImport } from './routes/print-qr'
 import { Route as ImpactRouteImport } from './routes/impact'
+import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
 
 const TechRoute = TechRouteImport.update({
@@ -24,9 +26,19 @@ const ResearchRoute = ResearchRouteImport.update({
   path: '/research',
   getParentRoute: () => rootRouteImport,
 } as any)
+const PrintQrRoute = PrintQrRouteImport.update({
+  id: '/print-qr',
+  path: '/print-qr',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ImpactRoute = ImpactRouteImport.update({
   id: '/impact',
   path: '/impact',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminRoute = AdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -37,34 +49,49 @@ const IndexRoute = IndexRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/impact': typeof ImpactRoute
+  '/print-qr': typeof PrintQrRoute
   '/research': typeof ResearchRoute
   '/tech': typeof TechRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/impact': typeof ImpactRoute
+  '/print-qr': typeof PrintQrRoute
   '/research': typeof ResearchRoute
   '/tech': typeof TechRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin': typeof AdminRoute
   '/impact': typeof ImpactRoute
+  '/print-qr': typeof PrintQrRoute
   '/research': typeof ResearchRoute
   '/tech': typeof TechRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/impact' | '/research' | '/tech'
+  fullPaths: '/' | '/admin' | '/impact' | '/print-qr' | '/research' | '/tech'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/impact' | '/research' | '/tech'
-  id: '__root__' | '/' | '/impact' | '/research' | '/tech'
+  to: '/' | '/admin' | '/impact' | '/print-qr' | '/research' | '/tech'
+  id:
+    | '__root__'
+    | '/'
+    | '/admin'
+    | '/impact'
+    | '/print-qr'
+    | '/research'
+    | '/tech'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminRoute: typeof AdminRoute
   ImpactRoute: typeof ImpactRoute
+  PrintQrRoute: typeof PrintQrRoute
   ResearchRoute: typeof ResearchRoute
   TechRoute: typeof TechRoute
 }
@@ -85,11 +112,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ResearchRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/print-qr': {
+      id: '/print-qr'
+      path: '/print-qr'
+      fullPath: '/print-qr'
+      preLoaderRoute: typeof PrintQrRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/impact': {
       id: '/impact'
       path: '/impact'
       fullPath: '/impact'
       preLoaderRoute: typeof ImpactRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin': {
+      id: '/admin'
+      path: '/admin'
+      fullPath: '/admin'
+      preLoaderRoute: typeof AdminRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -104,7 +145,9 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminRoute: AdminRoute,
   ImpactRoute: ImpactRoute,
+  PrintQrRoute: PrintQrRoute,
   ResearchRoute: ResearchRoute,
   TechRoute: TechRoute,
 }

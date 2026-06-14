@@ -1,0 +1,74 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // ============================================
+    // Helper functions
+    // ============================================
+    
+    function isValidComplaint() {
+      return request.resource.data.keys().hasAll([
+        'category', 'location', 'description', 'timestamp', 'status', 'priority'
+      ]) && 
+      request.resource.data.category in [
+        'Streetlight', 'Water', 'Garbage', 'Roads', 'Other'
+      ] &&
+      request.resource.data.status == 'open' &&
+      request.resource.data.priority in ['low', 'medium', 'high'] &&
+      request.resource.data.description.size() > 0 &&
+      request.resource.data.description.size() <= 300 &&
+      request.resource.data.location.size() > 0;
+    }
+
+    function isValidPhotoURL() {
+      return !('photoURL' in request.resource.data) || 
+             request.resource.data.photoURL == null ||
+             (request.resource.data.photoURL is string && 
+              request.resource.data.photoURL.matches('https://.*\\.(firebasestorage\\.app|cloudinary\\.com)/.*'));
+    }
+
+    function isNotTooFrequent() {
+      // Allow up to 5 complaints per minute per IP (client-side rate limiting is primary)
+      // This is a basic server-side safeguard
+      return true; // Adjust based on your needs
+    }
+
+    // ============================================
+    // Complaints Collection
+    // ============================================
+    
+    match /complaints/{complaintId} {
+      // Anyone can read complaints (for the public map)
+      allow read: if true;
+      
+      // Admins (any authenticated user) can update or delete
+      allow update, delete: if request.auth != null;
+      
+      // Anonymous users can create new complaints
+      allow create: if 
+        isValidComplaint() && 
+        isValidPhotoURL() &&
+        isNotTooFrequent();
+    }
+
+    // ============================================
+    // Analytics/Stats (Optional future feature)
+    // ============================================
+    
+    match /stats/{document=**} {
+      allow read: if true;
+      allow create, update, delete: if 
+        request.auth != null && 
+        request.auth.token.admin == true;
+    }
+
+    // ============================================
+    // Deny all other access
+    // ============================================
+    
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

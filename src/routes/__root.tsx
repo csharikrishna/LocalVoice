@@ -4,10 +4,11 @@ import {
   Link,
   createRootRouteWithContext,
   useRouter,
+  useLocation,
   HeadContent,
   Scripts,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
 import appCss from "../styles.css?url";
 import { Nav } from "@/components/civic/Nav";
@@ -15,19 +16,31 @@ import { Footer } from "@/components/civic/Footer";
 
 function NotFoundComponent() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg)] px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-7xl font-bold text-foreground">404</h1>
-        <h2 className="mt-4 text-xl font-semibold text-foreground">Page not found</h2>
-        <p className="mt-2 text-sm text-muted-foreground">
-          The page you're looking for doesn't exist or has been moved.
+        <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">
+          Page Not Found
         </p>
-        <div className="mt-6">
+
+        <h1 className="text-8xl font-black tracking-tight text-slate-950">
+          404
+        </h1>
+
+        <h2 className="mt-4 text-2xl font-semibold text-slate-900">
+          We couldn't find that page
+        </h2>
+
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">
+          The page you're looking for may have been moved, deleted, or never
+          existed.
+        </p>
+
+        <div className="mt-8">
           <Link
             to="/"
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-full bg-slate-950 px-6 py-3 text-sm font-medium text-white transition-all hover:opacity-90"
           >
-            Go home
+            Return Home
           </Link>
         </div>
       </div>
@@ -35,59 +48,157 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
+function ErrorComponent({
+  error,
+  reset,
+}: {
+  error: Error;
+  reset: () => void;
+}) {
   console.error(error);
+
   const router = useRouter();
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-background px-4">
+    <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg)] px-4">
       <div className="max-w-md text-center">
-        <h1 className="text-xl font-semibold tracking-tight text-foreground">
-          This page didn't load
-        </h1>
-        <p className="mt-2 text-sm text-muted-foreground">
-          Something went wrong on our end. You can try refreshing or head back home.
+        <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">
+          Unexpected Error
         </p>
-        <div className="mt-6 flex flex-wrap justify-center gap-2">
+
+        <h1 className="text-3xl font-bold text-slate-950">
+          Something interrupted the experience
+        </h1>
+
+        <p className="mt-3 text-sm leading-relaxed text-slate-500">
+          We couldn't load this page right now. Please try again in a moment.
+        </p>
+
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
           <button
             onClick={() => {
               router.invalidate();
               reset();
             }}
-            className="inline-flex items-center justify-center rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground transition-colors hover:bg-primary/90"
+            className="inline-flex items-center justify-center rounded-full bg-slate-950 px-5 py-3 text-sm font-medium text-white transition-all hover:opacity-90"
           >
-            Try again
+            Try Again
           </button>
-          <a
-            href="/"
-            className="inline-flex items-center justify-center rounded-md border border-input bg-background px-4 py-2 text-sm font-medium text-foreground transition-colors hover:bg-accent"
+
+          <Link
+            to="/"
+            className="inline-flex items-center justify-center rounded-full border border-slate-200 bg-white px-5 py-3 text-sm font-medium text-slate-700 transition-all hover:bg-slate-50"
           >
-            Go home
-          </a>
+            Go Home
+          </Link>
         </div>
       </div>
     </div>
   );
 }
 
-export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+export const Route = createRootRouteWithContext<{
+  queryClient: QueryClient;
+}>()({
   head: () => ({
     meta: [
       { charSet: "utf-8" },
-      { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "CivicScan — Report local issues in 60 seconds" },
-      { name: "description", content: "Scan a QR code on any street light, water pump or public asset and report a civic issue to local authorities in under 60 seconds." },
-      { name: "author", content: "CivicScan" },
-      { property: "og:title", content: "CivicScan — Smarter communities start with a scan" },
-      { property: "og:description", content: "QR-based local complaint reporting. No app, no account, no paperwork." },
-      { property: "og:type", content: "website" },
-      { name: "twitter:card", content: "summary_large_image" },
+
+      {
+        name: "viewport",
+        content: "width=device-width, initial-scale=1",
+      },
+
+      {
+        title: "LocalVoice — Smarter Communities Start With a Scan",
+      },
+
+      {
+        name: "description",
+        content:
+          "Transform civic reporting with QR-powered issue tracking. Report streetlights, roads, water leaks, garbage, and public infrastructure issues instantly.",
+      },
+
+      {
+        name: "author",
+        content: "LocalVoice",
+      },
+
+      {
+        name: "theme-color",
+        content: "#0f172a",
+      },
+
+      {
+        property: "og:title",
+        content: "LocalVoice — Smarter Communities Start With a Scan",
+      },
+
+      {
+        property: "og:description",
+        content:
+          "QR-based civic issue reporting. No app. No account. No paperwork.",
+      },
+
+      {
+        property: "og:type",
+        content: "website",
+      },
+
+      {
+        property: "og:site_name",
+        content: "LocalVoice",
+      },
+
+      {
+        name: "twitter:card",
+        content: "summary_large_image",
+      },
+
+      {
+        name: "twitter:title",
+        content: "LocalVoice",
+      },
+
+      {
+        name: "twitter:description",
+        content:
+          "QR-powered civic issue reporting for smarter communities.",
+      },
     ],
+
     links: [
-      { rel: "stylesheet", href: appCss },
-      { rel: "preconnect", href: "https://fonts.googleapis.com" },
-      { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" },
-      { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" },
+      {
+        rel: "stylesheet",
+        href: appCss,
+      },
+
+      {
+        rel: "preconnect",
+        href: "https://fonts.googleapis.com",
+      },
+
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous",
+      },
+
+      {
+        rel: "stylesheet",
+        href:
+          "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+      },
+
+      {
+        rel: "icon",
+        href: "/favicon.ico",
+      },
+
+      {
+        rel: "apple-touch-icon",
+        href: "/apple-touch-icon.png",
+      },
     ],
   }),
 
@@ -99,31 +210,34 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <html lang="en">
-      <head>
-        <HeadContent />
-      </head>
-      <body>
-        {children}
-        <Scripts />
-      </body>
-    </html>
+    <>
+      <HeadContent />
+      {children}
+      <Scripts />
+    </>
   );
 }
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  const location = useLocation();
+
+  const isPrintQr = location.pathname === "/print-qr";
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)]">
-        <Nav />
-        <main>
+      <div className="relative min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] antialiased selection:bg-slate-950 selection:text-white">
+        {/* Optional subtle texture layer */}
+        <div className="pointer-events-none fixed inset-0 opacity-[0.015]" />
+
+        {!isPrintQr && <Nav />}
+
+        <main className="relative">
           <Outlet />
         </main>
-        <Footer />
+
+        {!isPrintQr && <Footer />}
       </div>
     </QueryClientProvider>
   );
 }
-

@@ -6,9 +6,9 @@ import { Reveal } from "@/components/civic/Reveal";
 export const Route = createFileRoute("/research")({
   head: () => ({
     meta: [
-      { title: "Field Research — CivicScan" },
-      { name: "description", content: "Door-to-door interviews and priority rankings from neighborhoods in Tirupati that shaped CivicScan." },
-      { property: "og:title", content: "CivicScan Field Research — Built from the neighborhood up" },
+      { title: "Field Research — LocalVoice" },
+      { name: "description", content: "Door-to-door interviews and priority rankings from neighborhoods in Tirupati that shaped LocalVoice." },
+      { property: "og:title", content: "LocalVoice Field Research — Built from the neighborhood up" },
       { property: "og:description", content: "What we saw, heard, felt and thought — and the priority issues residents care about most." },
     ],
   }),
@@ -16,10 +16,16 @@ export const Route = createFileRoute("/research")({
 });
 
 const observations = [
-  { label: "SAW", text: "Broken streetlights at five intersections, unrepaired for over a month." },
-  { label: "HEARD", text: "Residents frustrated by busy helpline numbers and unanswered visits." },
-  { label: "FELT", text: "A quiet resignation — that nothing changes unless you know someone." },
-  { label: "THOUGHT", text: "What if reporting an issue was as easy as scanning a code on the post itself?" },
+  { label: "SAW", text: "Broken streetlights at five intersections, unrepaired for over a month, leaving streets dark and unsafe at night." },
+  { label: "HEARD", text: "Residents completely frustrated by busy helpline numbers, complicated municipal apps, and unanswered ward visits." },
+  { label: "FELT", text: "A quiet, lingering resignation across the neighborhood — a shared feeling that nothing changes unless you know someone." },
+  { label: "THOUGHT", text: "What if reporting an issue was as universally easy as scanning a restaurant menu? What if the city came to them?" },
+];
+
+const methodology = [
+  { step: "01", title: "Door-to-Door Surveys", desc: "We spoke with over 300 households to understand the daily civic frictions they face and why they don't report them." },
+  { step: "02", title: "Municipal Shadowing", desc: "We followed 5 sanitation workers and 2 civic engineers for a week to map their workflow and understand the bureaucratic bottlenecks." },
+  { step: "03", title: "Prototype Testing", desc: "We deployed low-fidelity paper prototypes with QR codes at local bus stops to test scanning viability across demographics." },
 ];
 
 const issueScores = [
@@ -44,7 +50,7 @@ function ResearchPage() {
           <Reveal delay={160}>
             <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7] max-w-[520px]">
               We spent four weeks walking, listening and learning across Tirupati's Ward 4.
-              These observations shaped every screen of CivicScan.
+              These observations shaped every screen of LocalVoice.
             </p>
           </Reveal>
           <div className="mt-8 space-y-5">
@@ -79,15 +85,36 @@ function ResearchPage() {
             </div>
           </Reveal>
 
-          <div className="mt-10">
-            <Link
-              to="/tech"
-              className="inline-flex items-center gap-2 px-6 py-3 rounded-[10px] font-semibold text-base bg-[color:var(--primary)] text-white hover:-translate-y-px transition-transform"
-              style={{ boxShadow: "0 10px 24px rgba(27,79,216,0.25)" }}
-            >
-              See how we built it <ArrowRight size={16} />
-            </Link>
-          </div>
+        </div>
+      </div>
+
+      <div className="container-x mt-24">
+        <Reveal><span className="eyebrow">Our Methodology</span></Reveal>
+        <Reveal delay={80}>
+          <h2 className="mt-3 text-3xl font-extrabold text-slate-900" style={{ letterSpacing: "-0.02em" }}>
+            How we built the foundation.
+          </h2>
+        </Reveal>
+
+        <div className="mt-12 grid md:grid-cols-3 gap-8">
+          {methodology.map((m, i) => (
+            <Reveal key={m.step} delay={i * 100}>
+              <div className="bg-white p-8 rounded-[20px] border border-slate-200 shadow-sm h-full hover:-translate-y-1 transition-transform">
+                <span className="text-4xl font-black text-slate-200 mb-6 block">{m.step}</span>
+                <h3 className="text-xl font-bold text-slate-900 mb-3">{m.title}</h3>
+                <p className="text-slate-600 leading-relaxed">{m.desc}</p>
+              </div>
+            </Reveal>
+          ))}
+        </div>
+
+        <div className="mt-16 text-center">
+          <Link
+            to="/tech"
+            className="inline-flex items-center gap-2 px-8 py-4 rounded-full font-bold text-lg bg-slate-950 text-white hover:bg-slate-800 transition-colors shadow-lg hover:shadow-xl"
+          >
+            See the technology stack <ArrowRight size={18} />
+          </Link>
         </div>
       </div>
     </section>

@@ -2,17 +2,16 @@ import { createFileRoute, Link } from "@tanstack/react-router";
 import {
   QrCode, MapPin, CheckCircle2, Zap, Camera, FolderTree,
   LayoutDashboard, Bell, Database, WifiOff,
-  ArrowRight, Sparkles,
+  ArrowRight, Sparkles, Printer
 } from "lucide-react";
 import { PulseMap } from "@/components/civic/PulseMap";
 import { Reveal } from "@/components/civic/Reveal";
 import { ComplaintForm } from "@/components/civic/ComplaintForm";
-import { QrSticker } from "@/components/civic/QrSticker";
 
 export const Route = createFileRoute("/")({
   head: () => ({
     meta: [
-      { title: "CivicScan — Report local issues in 60 seconds" },
+      { title: "LocalVoice — Report local issues in 60 seconds" },
       {
         name: "description",
         content:
@@ -80,7 +79,7 @@ function Hero() {
 
           <Reveal delay={380}>
             <p className="mt-7 text-lg lg:text-xl text-[color:var(--text-secondary)] max-w-[560px] leading-[1.55]">
-              CivicScan turns every public asset into a reporting channel. Scan the QR,
+              LocalVoice turns every public asset into a reporting channel. Scan the QR,
               describe the problem, and it lands with the right authority — in under 60 seconds.
             </p>
           </Reveal>
@@ -145,7 +144,7 @@ function Problem() {
           <Reveal delay={160}>
             <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7]">
               In most neighborhoods, reporting a broken streetlight means calling a number
-              that rings out. Reporting a pothole means finding the right office. CivicScan
+              that rings out. Reporting a pothole means finding the right office. LocalVoice
               changes that with a single scan.
             </p>
           </Reveal>
@@ -247,11 +246,8 @@ function ReportSection() {
           </Reveal>
         </div>
 
-        <div className="grid sm:grid-cols-[auto_1fr] gap-6 items-start">
-          <Reveal delay={100}>
-            <QrSticker />
-          </Reveal>
-          <Reveal delay={180}>
+        <div className="flex justify-center lg:justify-end">
+          <Reveal delay={180} className="w-full max-w-xl">
             <ComplaintForm />
           </Reveal>
         </div>
@@ -335,7 +331,7 @@ function ExploreMore() {
       to: "/impact" as const,
       eyebrow: "Impact",
       title: "Measurable outcomes & UN SDGs",
-      body: "How CivicScan aligns with five Sustainable Development Goals and the metrics that prove it.",
+      body: "How LocalVoice aligns with five Sustainable Development Goals and the metrics that prove it.",
     },
     {
       to: "/research" as const,

@@ -17,7 +17,7 @@ export function QrSticker({
   category = "Street Light",
   className = "",
 }: Props) {
-  const fallback = url ?? `https://civicscan.app/r/${assetId}`;
+  const fallback = url ?? `https://localvoice.app/r/${assetId}`;
   const [reportUrl, setReportUrl] = useState(fallback);
   useEffect(() => {
     if (!url) setReportUrl(`${window.location.origin}/report?id=${assetId}`);
@@ -37,7 +37,7 @@ export function QrSticker({
       />
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-1.5 text-[10px] font-bold tracking-[0.15em] text-[color:var(--primary)]">
-          <Scan size={12} /> CIVICSCAN
+          <Scan size={12} /> LOCALVOICE
         </div>
         <span className="text-[10px] font-mono text-[color:var(--text-tertiary,#64748B)]">
           {assetId}

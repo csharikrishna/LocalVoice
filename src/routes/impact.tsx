@@ -6,9 +6,9 @@ import { StatCounter } from "@/components/civic/StatCounter";
 export const Route = createFileRoute("/impact")({
   head: () => ({
     meta: [
-      { title: "Impact & SDG Alignment — CivicScan" },
-      { name: "description", content: "How CivicScan creates measurable civic impact and aligns with five UN Sustainable Development Goals." },
-      { property: "og:title", content: "CivicScan Impact — Aligned with five UN SDGs" },
+      { title: "Impact & SDG Alignment — LocalVoice" },
+      { name: "description", content: "How LocalVoice creates measurable civic impact and aligns with five UN Sustainable Development Goals." },
+      { property: "og:title", content: "LocalVoice Impact — Aligned with five UN SDGs" },
       { property: "og:description", content: "Real community data, measurable outcomes, and alignment with UN Sustainable Development Goals." },
     ],
   }),
@@ -36,6 +36,12 @@ const mapping = [
   { issue: "Streetlights & roads", sdg: 11, color: "#F99D26", name: "Sustainable cities" },
   { issue: "Civic reporting platform", sdg: 9, color: "#F36D25", name: "Innovation" },
   { issue: "Accountability & audit trail", sdg: 16, color: "#00689D", name: "Strong institutions" },
+];
+
+const outcomes = [
+  { title: "70% Faster Resolution", desc: "By digitizing the reporting process and routing issues directly to the concerned municipal department, we eliminate manual paperwork and cut out bureaucratic red tape." },
+  { title: "Democratized Civic Access", desc: "Lowering the barrier to entry (no apps, no accounts, no language barriers) means more citizens, from youth to the elderly, are actively engaging with local governance." },
+  { title: "Data-Driven Resource Allocation", desc: "Generating real-time heatmaps of recurring neighborhood issues helps city planners proactively budget and deploy resources exactly where they are needed most." },
 ];
 
 function ImpactPage() {
@@ -70,10 +76,37 @@ function ImpactPage() {
                 <div className="text-5xl lg:text-6xl font-extrabold tracking-tight">
                   <StatCounter value={s.value} suffix={s.suffix} />
                 </div>
-                <div className="mt-2 text-base" style={{ color: "rgba(255,255,255,0.75)" }}>
+                <div className="mt-2 text-base font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
                   {s.label}
                 </div>
               </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section-y bg-slate-50">
+        <div className="container-x">
+          <div className="max-w-3xl mx-auto text-center">
+            <Reveal><span className="eyebrow">Real-world outcomes</span></Reveal>
+            <Reveal delay={80}>
+              <h2 className="mt-4 text-3xl md:text-4xl font-extrabold text-slate-900" style={{ letterSpacing: "-0.03em" }}>
+                Transforming civic engagement from a chore into a seamless habit.
+              </h2>
+            </Reveal>
+          </div>
+
+          <div className="mt-16 grid md:grid-cols-3 gap-8">
+            {outcomes.map((outcome, i) => (
+              <Reveal key={outcome.title} delay={i * 100}>
+                <div className="bg-white p-8 rounded-3xl border border-slate-200 shadow-sm hover:shadow-md transition-shadow h-full">
+                  <div className="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-6 text-xl font-black text-slate-900">
+                    {i + 1}
+                  </div>
+                  <h3 className="text-xl font-bold text-slate-900 mb-3">{outcome.title}</h3>
+                  <p className="text-slate-600 leading-relaxed">{outcome.desc}</p>
+                </div>
+              </Reveal>
             ))}
           </div>
         </div>

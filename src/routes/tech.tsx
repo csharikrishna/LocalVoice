@@ -6,9 +6,9 @@ import { Reveal } from "@/components/civic/Reveal";
 export const Route = createFileRoute("/tech")({
   head: () => ({
     meta: [
-      { title: "Tech & Timeline — CivicScan" },
-      { name: "description", content: "The technology, system flow, security model, and 8-week build timeline behind CivicScan." },
-      { property: "og:title", content: "CivicScan Architecture — Open, secure, reliable" },
+      { title: "Tech & Timeline — LocalVoice" },
+      { name: "description", content: "The technology, system flow, security model, and 8-week build timeline behind LocalVoice." },
+      { property: "og:title", content: "LocalVoice Architecture — Open, secure, reliable" },
       { property: "og:description", content: "System flow, technology stack, security model and an 8-week deployment timeline." },
     ],
   }),
@@ -106,41 +106,36 @@ function SystemFlow() {
 }
 
 function TechStack() {
-  const stack: Array<[string, string]> = [
-    ["HTML5 Geolocation API", "Auto-detect citizen coordinates"],
-    ["QR Code", "Asset identity & deep linking"],
-    ["Firebase / Firestore", "Realtime complaint database"],
-    ["TanStack Start", "SSR-first React framework"],
-    ["Tailwind CSS", "Design-token-driven styling"],
-    ["Lucide Icons", "Consistent icon system"],
+  const stack = [
+    { title: "HTML5 Geolocation API", category: "Core Functionality", desc: "Instantly captures and validates citizen coordinates to pinpoint issues down to a 5-meter radius without requiring manual address entry." },
+    { title: "Dynamic QR Routing", category: "Identity & Linking", desc: "Unique QR nodes embedded with ward, street, and asset data. Scanning instantly loads the precise reporting form for that exact physical location." },
+    { title: "Firebase / Firestore", category: "Database & Backend", desc: "A robust NoSQL cloud database that handles real-time complaint ingestion, automatic indexing, and live dashboard syncing with zero latency." },
+    { title: "TanStack Router", category: "Navigation & State", desc: "Type-safe routing and state management that ensures snappy page transitions, search-param driven filtering, and zero hydration mismatches." },
+    { title: "Tailwind CSS", category: "UI & Design System", desc: "A utility-first CSS framework that allows us to build a lightning-fast, 100% mobile-responsive design system with custom brand tokens." },
+    { title: "PWA Capabilities", category: "Progressive Web App", desc: "The app works beautifully in a mobile browser but behaves like a native app, allowing offline data caching and fast loading over 3G networks." },
   ];
   return (
-    <div className="bg-white rounded-[16px] overflow-hidden" style={{ border: "1px solid var(--border)" }}>
-      <table className="w-full text-sm">
-        <thead>
-          <tr style={{ background: "var(--surface-2)" }} className="text-left">
-            <th className="px-6 py-3 font-semibold">Technology</th>
-            <th className="px-6 py-3 font-semibold">Purpose</th>
-          </tr>
-        </thead>
-        <tbody>
-          {stack.map(([t, p], i) => (
-            <tr key={t} style={{ background: i % 2 ? "var(--surface-2)" : "var(--surface)" }}>
-              <td className="px-6 py-3 font-mono text-[13px] text-[color:var(--primary)]">{t}</td>
-              <td className="px-6 py-3 text-[color:var(--text-secondary)]">{p}</td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+    <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+      {stack.map((item, i) => (
+        <Reveal key={item.title} delay={i * 80}>
+          <div className="bg-white p-6 rounded-[20px] border border-slate-200 shadow-sm hover:shadow-md transition-all h-full">
+            <span className="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 block">
+              {item.category}
+            </span>
+            <h3 className="text-xl font-bold text-slate-900 mb-3">{item.title}</h3>
+            <p className="text-sm text-slate-600 leading-relaxed">{item.desc}</p>
+          </div>
+        </Reveal>
+      ))}
     </div>
   );
 }
 
 function Security() {
   const items = [
-    { icon: ShieldCheck, title: "Data encryption", body: "All traffic encrypted end-to-end over HTTPS." },
-    { icon: Key, title: "No account required", body: "We don't collect identity unless you opt in." },
-    { icon: Lock, title: "Firebase Auth + Rules", body: "Strict row-level rules for admin access." },
+    { icon: ShieldCheck, title: "End-to-End Encryption", body: "All network traffic is encrypted via TLS 1.3 HTTPS, ensuring citizen data is completely secure in transit." },
+    { icon: Key, title: "Zero-Account Anonymity", body: "We strictly adhere to privacy-first principles. No account is required, and we don't collect PII unless you explicitly opt in." },
+    { icon: Lock, title: "Row-Level Database Rules", strict: true, body: "Strict Firebase Security Rules ensure that complaints can only be written by users, but only read or modified by authenticated Municipal Admins." },
   ];
   return (
     <div className="grid sm:grid-cols-3 gap-5">

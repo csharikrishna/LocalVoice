@@ -1,0 +1,53 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // ============================================
+    // Helper functions
+    // ============================================
+    
+    function isImage() {
+      return request.resource.contentType.matches('image/.*');
+    }
+
+    function isValidSize() {
+      // Max 5MB for images
+      return request.resource.size <= 5 * 1024 * 1024;
+    }
+
+    function isValidImageType() {
+      return request.resource.contentType in [
+        'image/jpeg',
+        'image/png',
+        'image/webp'
+      ];
+    }
+
+    // ============================================
+    // Complaints Photos
+    // ============================================
+    
+    match /complaints/{complaintId}/{fileName} {
+      // Allow uploads to complaints folder
+      allow create: if 
+        isImage() &&
+        isValidSize() &&
+        isValidImageType();
+
+      // Allow public read (anyone can view complaint photos)
+      allow read: if true;
+
+      // Only allow delete if authenticated (for cleanup)
+      allow delete: if request.auth != null;
+    }
+
+    // ============================================
+    // Deny all other access
+    // ============================================
+    
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
