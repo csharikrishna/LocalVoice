@@ -37,7 +37,9 @@ export function Nav() {
       <div className="container-x flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2.5">
           <Logo />
-          <span className="font-semibold text-[color:var(--text-primary)] tracking-tight">LocalVoice</span>
+          <span className="font-semibold text-[color:var(--text-primary)] tracking-tight">
+            LocalVoice
+          </span>
         </Link>
 
         <ul className="hidden lg:flex items-center gap-8">
@@ -113,12 +115,13 @@ export function Nav() {
               </Link>
             </li>
           ))}
-          <li className="pt-4 pb-2 flex flex-col gap-3"
-              style={{
-                opacity: open ? 1 : 0,
-                transform: open ? "translateY(0)" : "translateY(-6px)",
-                transition: `all 0.3s ease ${links.length * 60}ms`,
-              }}
+          <li
+            className="pt-4 pb-2 flex flex-col gap-3"
+            style={{
+              opacity: open ? 1 : 0,
+              transform: open ? "translateY(0)" : "translateY(-6px)",
+              transition: `all 0.3s ease ${links.length * 60}ms`,
+            }}
           >
             <Link
               to="/"

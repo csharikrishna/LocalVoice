@@ -1,11 +1,33 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { collection, query, where, getDocs, orderBy, limit, doc, updateDoc, increment } from "firebase/firestore";
+import {
+  collection,
+  query,
+  where,
+  getDocs,
+  orderBy,
+  limit,
+  doc,
+  updateDoc,
+  increment,
+} from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, Search, Loader2, Clock, CheckCircle2, AlertCircle, Wrench, ThumbsUp, Filter, List, Map as MapIcon } from "lucide-react";
+import {
+  MapPin,
+  Search,
+  Loader2,
+  Clock,
+  CheckCircle2,
+  AlertCircle,
+  Wrench,
+  ThumbsUp,
+  Filter,
+  List,
+  Map as MapIcon,
+} from "lucide-react";
 import { Reveal } from "@/components/civic/Reveal";
 
 // Fix leaflet icon
@@ -25,9 +47,9 @@ export const Route = createFileRoute("/map")({
   head: () => ({
     meta: [
       { title: "Live Issue Map — LocalVoice" },
-      { name: "description", content: "View civic issues reported across the city in real-time." }
-    ]
-  })
+      { name: "description", content: "View civic issues reported across the city in real-time." },
+    ],
+  }),
 });
 
 interface PublicComplaint {
@@ -69,23 +91,22 @@ function PublicMapRoute() {
     async function fetchPublicComplaints() {
       try {
         // Only fetch recent 100 to avoid clutter and huge reads
-        const q = query(
-          collection(db, "complaints"),
-          orderBy("timestamp", "desc"),
-          limit(100)
-        );
+        const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"), limit(100));
         const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          category: doc.data().category,
-          description: doc.data().description,
-          location: doc.data().location,
-          status: doc.data().status,
-          timestamp: doc.data().timestamp,
-          photoURL: doc.data().photoURL,
-          coordinates: doc.data().coordinates,
-          upvotes: doc.data().upvotes || 0,
-        } as PublicComplaint));
+        const data = snapshot.docs.map(
+          (doc) =>
+            ({
+              id: doc.id,
+              category: doc.data().category,
+              description: doc.data().description,
+              location: doc.data().location,
+              status: doc.data().status,
+              timestamp: doc.data().timestamp,
+              photoURL: doc.data().photoURL,
+              coordinates: doc.data().coordinates,
+              upvotes: doc.data().upvotes || 0,
+            }) as PublicComplaint,
+        );
         setComplaints(data);
       } catch (err) {
         console.error("Error fetching public map data:", err);
@@ -105,58 +126,73 @@ function PublicMapRoute() {
       }
 
       // Optimistic UI update
-      setComplaints(prev => prev.map(c => c.id === id ? { ...c, upvotes: (c.upvotes || 0) + 1 } : c));
-      
+      setComplaints((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, upvotes: (c.upvotes || 0) + 1 } : c)),
+      );
+
       // Update local storage
       localStorage.setItem("civicscan_upvotes", JSON.stringify([...voted, id]));
 
       // Update Firestore
       await updateDoc(doc(db, "complaints", id), {
-        upvotes: increment(1)
+        upvotes: increment(1),
       });
     } catch (err) {
       console.error("Failed to upvote:", err);
       // Revert on failure
-      setComplaints(prev => prev.map(c => c.id === id ? { ...c, upvotes: Math.max(0, (c.upvotes || 1) - 1) } : c));
+      setComplaints((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, upvotes: Math.max(0, (c.upvotes || 1) - 1) } : c)),
+      );
       alert("Failed to upvote. Please try again.");
     }
   };
 
-  const filteredComplaints = complaints.filter(c => {
+  const filteredComplaints = complaints.filter((c) => {
     if (filter === "open") return c.status === "open" || c.status === "working";
     if (filter === "resolved") return c.status === "closed";
     return true;
   });
 
   const defaultCenter: [number, number] = [20.5937, 78.9629];
-  const complaintsWithCoords = filteredComplaints.filter(c => c.coordinates);
-  const mapCenter = focusedLocation || (complaintsWithCoords.length > 0
-    ? [complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [number, number]
-    : defaultCenter);
+  const complaintsWithCoords = filteredComplaints.filter((c) => c.coordinates);
+  const mapCenter =
+    focusedLocation ||
+    (complaintsWithCoords.length > 0
+      ? ([complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [
+          number,
+          number,
+        ])
+      : defaultCenter);
 
   return (
     <div className="pt-24 lg:pt-28 min-h-screen bg-slate-50 flex flex-col">
       <div className="container-x py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 z-10 relative">
         <div>
-          <Reveal><span className="eyebrow">Live Pulse</span></Reveal>
+          <Reveal>
+            <span className="eyebrow">Live Pulse</span>
+          </Reveal>
           <Reveal delay={80}>
-            <h1 className="mt-2 text-3xl font-extrabold text-[color:var(--text-primary)] tracking-tight">Public Issue Map</h1>
+            <h1 className="mt-2 text-3xl font-extrabold text-[color:var(--text-primary)] tracking-tight">
+              Public Issue Map
+            </h1>
           </Reveal>
           <Reveal delay={160}>
-            <p className="mt-2 text-[color:var(--text-secondary)]">Explore recent civic reports from your community.</p>
+            <p className="mt-2 text-[color:var(--text-secondary)]">
+              Explore recent civic reports from your community.
+            </p>
           </Reveal>
         </div>
 
         <Reveal delay={240}>
           <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
             <div className="flex bg-slate-100 rounded-lg p-1">
-              <button 
+              <button
                 onClick={() => setViewMode("map")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "map" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
                 <MapIcon size={16} /> Map
               </button>
-              <button 
+              <button
                 onClick={() => setViewMode("list")}
                 className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
               >
@@ -202,15 +238,16 @@ function PublicMapRoute() {
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
               {complaintsWithCoords.map((c) => (
-                <Marker 
-                  key={c.id} 
-                  position={[c.coordinates!.lat, c.coordinates!.lng]}
-                >
+                <Marker key={c.id} position={[c.coordinates!.lat, c.coordinates!.lng]}>
                   <Popup className="custom-popup">
                     <div className="min-w-[240px]">
                       {c.photoURL && (
                         <div className="h-32 -mx-5 -mt-4 mb-3 overflow-hidden rounded-t-lg">
-                          <img src={c.photoURL} className="w-full h-full object-cover" alt="Issue" />
+                          <img
+                            src={c.photoURL}
+                            className="w-full h-full object-cover"
+                            alt="Issue"
+                          />
                         </div>
                       )}
                       <div className="flex justify-between items-start gap-2 mb-2">
@@ -221,7 +258,10 @@ function PublicMapRoute() {
                           const conf = statusConfig[c.status] || statusConfig.open;
                           const Icon = conf.icon;
                           return (
-                            <span className="flex items-center gap-1 text-[11px] font-bold" style={{ color: conf.color }}>
+                            <span
+                              className="flex items-center gap-1 text-[11px] font-bold"
+                              style={{ color: conf.color }}
+                            >
                               <Icon size={12} /> {conf.label}
                             </span>
                           );
@@ -256,26 +296,39 @@ function PublicMapRoute() {
               </div>
             ) : (
               <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {filteredComplaints.map(c => {
+                {filteredComplaints.map((c) => {
                   const conf = statusConfig[c.status] || statusConfig.open;
                   const StatusIcon = conf.icon;
                   return (
-                    <div key={c.id} className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow">
+                    <div
+                      key={c.id}
+                      className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden flex flex-col hover:shadow-md transition-shadow"
+                    >
                       {c.photoURL ? (
                         <div className="h-48 w-full bg-slate-100 relative">
-                          <img src={c.photoURL} alt="Issue" className="w-full h-full object-cover" />
-                          <div className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-xs font-bold rounded-md shadow-sm flex items-center gap-1.5" style={{ color: conf.color }}>
+                          <img
+                            src={c.photoURL}
+                            alt="Issue"
+                            className="w-full h-full object-cover"
+                          />
+                          <div
+                            className="absolute top-3 right-3 px-2.5 py-1 bg-white/90 backdrop-blur-sm text-xs font-bold rounded-md shadow-sm flex items-center gap-1.5"
+                            style={{ color: conf.color }}
+                          >
                             <StatusIcon size={14} /> {conf.label}
                           </div>
                         </div>
                       ) : (
                         <div className="px-5 pt-5 pb-0 flex justify-end">
-                          <div className="px-2.5 py-1 bg-slate-50 text-xs font-bold rounded-md flex items-center gap-1.5 border border-slate-100" style={{ color: conf.color }}>
+                          <div
+                            className="px-2.5 py-1 bg-slate-50 text-xs font-bold rounded-md flex items-center gap-1.5 border border-slate-100"
+                            style={{ color: conf.color }}
+                          >
                             <StatusIcon size={14} /> {conf.label}
                           </div>
                         </div>
                       )}
-                      
+
                       <div className="p-5 flex-1 flex flex-col">
                         <div className="flex items-center justify-between mb-2">
                           <span className="text-[10px] font-bold uppercase tracking-wider text-slate-500 bg-slate-100 px-2 py-0.5 rounded">
@@ -283,19 +336,21 @@ function PublicMapRoute() {
                           </span>
                           <span className="text-xs text-slate-400 flex items-center gap-1">
                             <Clock size={12} />
-                            {c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleDateString() : 'Recent'}
+                            {c.timestamp?.toDate
+                              ? new Date(c.timestamp.toDate()).toLocaleDateString()
+                              : "Recent"}
                           </span>
                         </div>
-                        
+
                         <p className="text-sm font-medium text-slate-800 mb-3 line-clamp-3 flex-1">
                           {c.description}
                         </p>
-                        
+
                         <div className="flex items-start gap-1.5 text-xs text-slate-500 mb-4 line-clamp-2 pt-3 border-t border-slate-100">
                           <MapPin size={14} className="shrink-0 text-slate-400" />
                           {c.location}
                         </div>
-                        
+
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleUpvote(c.id)}

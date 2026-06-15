@@ -14,7 +14,8 @@ export function Footer() {
           <p className="mt-3 text-sm">Smarter communities start with a scan.</p>
           <a
             href="https://github.com/csharikrishna/LocalVoice"
-            target="_blank" rel="noopener noreferrer"
+            target="_blank"
+            rel="noopener noreferrer"
             className="inline-flex items-center justify-center w-9 h-9 rounded-[10px] mt-5 hover:text-white hover:bg-white/10 transition-colors"
             aria-label="GitHub"
           >
@@ -25,10 +26,26 @@ export function Footer() {
         <div>
           <h4 className="text-white text-sm font-semibold mb-3">Explore</h4>
           <ul className="space-y-2 text-sm">
-            <li><Link to="/" className="hover:text-white transition-colors">Home</Link></li>
-            <li><Link to="/impact" className="hover:text-white transition-colors">Impact &amp; SDGs</Link></li>
-            <li><Link to="/research" className="hover:text-white transition-colors">Field Research</Link></li>
-            <li><Link to="/tech" className="hover:text-white transition-colors">Tech &amp; Timeline</Link></li>
+            <li>
+              <Link to="/" className="hover:text-white transition-colors">
+                Home
+              </Link>
+            </li>
+            <li>
+              <Link to="/impact" className="hover:text-white transition-colors">
+                Impact &amp; SDGs
+              </Link>
+            </li>
+            <li>
+              <Link to="/research" className="hover:text-white transition-colors">
+                Field Research
+              </Link>
+            </li>
+            <li>
+              <Link to="/tech" className="hover:text-white transition-colors">
+                Tech &amp; Timeline
+              </Link>
+            </li>
           </ul>
         </div>
 

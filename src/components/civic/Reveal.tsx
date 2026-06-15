@@ -24,7 +24,7 @@ export function Reveal({
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.12 },
     );
     io.observe(el);
     return () => io.disconnect();

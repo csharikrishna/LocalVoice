@@ -32,18 +32,21 @@ Ensure you have [Node.js](https://nodejs.org/) installed on your machine. You wi
 ### Installation
 
 1. **Clone the repository**
+
    ```bash
    git clone https://github.com/csharikrishna/LocalVoice.git
    cd LocalVoice
    ```
 
 2. **Install dependencies**
+
    ```bash
    npm install
    ```
 
 3. **Configure Environment Variables**
    Create a `.env.local` file in the root directory and add your Firebase configuration:
+
    ```env
    VITE_FIREBASE_API_KEY="your_api_key"
    VITE_FIREBASE_AUTH_DOMAIN="your_auth_domain"

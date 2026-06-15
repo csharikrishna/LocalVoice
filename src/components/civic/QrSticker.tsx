@@ -23,7 +23,6 @@ export function QrSticker({
     if (!url) setReportUrl(`${window.location.origin}/report?id=${assetId}`);
   }, [url, assetId]);
 
-
   return (
     <div
       className={`relative bg-white rounded-2xl p-6 shadow-[0_20px_60px_-20px_rgba(15,23,42,0.35)] border border-[color:var(--border)] ${className}`}
@@ -56,9 +55,7 @@ export function QrSticker({
       </div>
 
       <div className="mt-4 space-y-1">
-        <p className="text-sm font-semibold text-[color:var(--text-primary)]">
-          Report: {category}
-        </p>
+        <p className="text-sm font-semibold text-[color:var(--text-primary)]">Report: {category}</p>
         <p className="flex items-center gap-1 text-xs text-[color:var(--text-secondary)]">
           <MapPin size={12} /> {location}
         </p>

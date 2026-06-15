@@ -1,10 +1,10 @@
-import { v2 as cloudinary } from 'cloudinary';
+import { v2 as cloudinary } from "cloudinary";
 
 // 1. Configure Cloudinary
-cloudinary.config({ 
-  cloud_name: 'dyh1xpfgm', 
-  api_key: '197399561289678', 
-  api_secret: 'yoXDV_hu8HEkhy98eG4_rugB5Xk' 
+cloudinary.config({
+  cloud_name: "dyh1xpfgm",
+  api_key: "197399561289678",
+  api_secret: "yoXDV_hu8HEkhy98eG4_rugB5Xk",
 });
 
 async function run() {
@@ -12,8 +12,8 @@ async function run() {
     // 2. Upload an image
     console.log("Uploading sample image...");
     const uploadResult = await cloudinary.uploader.upload(
-      'https://res.cloudinary.com/demo/image/upload/sample.jpg',
-      { public_id: 'test_sample' }
+      "https://res.cloudinary.com/demo/image/upload/sample.jpg",
+      { public_id: "test_sample" },
     );
     console.log("Upload successful!");
     console.log("Secure URL:", uploadResult.secure_url);
@@ -30,13 +30,14 @@ async function run() {
     // f_auto: automatically chooses the most efficient image format (e.g., WebP/AVIF) for the requesting browser
     // q_auto: automatically adjusts compression quality to reduce file size while maintaining visual fidelity
     const transformedUrl = cloudinary.url(uploadResult.public_id, {
-      fetch_format: 'auto',
-      quality: 'auto'
+      fetch_format: "auto",
+      quality: "auto",
     });
 
-    console.log("\nDone! Click link below to see optimized version of the image. Check the size and the format.");
+    console.log(
+      "\nDone! Click link below to see optimized version of the image. Check the size and the format.",
+    );
     console.log(transformedUrl);
-
   } catch (error) {
     console.error("Error running Cloudinary script:", error);
   }

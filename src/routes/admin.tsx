@@ -6,7 +6,22 @@ import { db, auth } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Image as ImageIcon, Search, Filter, X, AlertCircle, Wrench, CheckCircle2, BarChart3 } from "lucide-react";
+import {
+  Loader2,
+  MapPin,
+  Lock,
+  LogOut,
+  Download,
+  ArrowUpDown,
+  Image as ImageIcon,
+  Search,
+  Filter,
+  X,
+  AlertCircle,
+  Wrench,
+  CheckCircle2,
+  BarChart3,
+} from "lucide-react";
 import * as XLSX from "xlsx";
 import {
   createColumnHelper,
@@ -62,7 +77,8 @@ function AdminRouteWrapper() {
         const { isSignInWithEmailLink, signInWithEmailLink } = await import("firebase/auth");
         // Intercept Magic Link returning from Email
         if (isSignInWithEmailLink(auth, window.location.href)) {
-          const email = window.localStorage.getItem("emailForSignIn") || import.meta.env.VITE_ADMIN_EMAIL;
+          const email =
+            window.localStorage.getItem("emailForSignIn") || import.meta.env.VITE_ADMIN_EMAIL;
           if (email) {
             await signInWithEmailLink(auth, email, window.location.href);
             window.localStorage.removeItem("emailForSignIn");
@@ -99,7 +115,9 @@ function AdminRouteWrapper() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 flex-col gap-4">
         <div className="text-red-600 p-4 bg-red-50 rounded-lg">Error: {errorMsg}</div>
-        <button onClick={() => window.location.reload()} className="text-blue-600 underline">Reload</button>
+        <button onClick={() => window.location.reload()} className="text-blue-600 underline">
+          Reload
+        </button>
       </div>
     );
   }
@@ -122,9 +140,9 @@ function AdminLogin() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    
+
     const adminEmail = `${username}@civicscan.admin`;
-    
+
     try {
       await signInWithEmailAndPassword(auth, adminEmail, password);
     } catch (err: any) {
@@ -138,7 +156,7 @@ function AdminLogin() {
     setError("");
     setLoading(true);
     const email = import.meta.env.VITE_ADMIN_EMAIL;
-    
+
     if (!email) {
       setError("Admin email not configured in .env.local");
       setLoading(false);
@@ -215,7 +233,9 @@ function AdminLogin() {
 
         <div className="mt-6 flex items-center justify-between">
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
-          <span className="text-xs text-center text-gray-500 uppercase font-semibold tracking-wider">Or</span>
+          <span className="text-xs text-center text-gray-500 uppercase font-semibold tracking-wider">
+            Or
+          </span>
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
         </div>
 
@@ -243,7 +263,13 @@ function AdminLogin() {
 
 const columnHelper = createColumnHelper<Complaint>();
 
-function MapFlyTo({ center, popupId }: { center: [number, number] | null, popupId?: string | null }) {
+function MapFlyTo({
+  center,
+  popupId,
+}: {
+  center: [number, number] | null;
+  popupId?: string | null;
+}) {
   const map = useMap();
   useEffect(() => {
     if (center) {
@@ -267,19 +293,23 @@ function AdminDashboard() {
   // Real-time Firestore listener
   useEffect(() => {
     const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
-      setComplaints(data);
-      setLoading(false);
-    }, (error) => {
-      console.error("Error listening to complaints:", error);
-      setLoading(false);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const data = snapshot.docs.map((doc) => ({ id: doc.id, ...doc.data() }) as Complaint);
+        setComplaints(data);
+        setLoading(false);
+      },
+      (error) => {
+        console.error("Error listening to complaints:", error);
+        setLoading(false);
+      },
+    );
     return () => unsubscribe();
   }, []);
 
   // Derived filtered data
-  const filteredComplaints = complaints.filter(c => {
+  const filteredComplaints = complaints.filter((c) => {
     if (statusFilter !== "all" && c.status !== statusFilter) return false;
     if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
     if (globalFilter) {
@@ -297,12 +327,12 @@ function AdminDashboard() {
   // Analytics
   const stats = {
     total: complaints.length,
-    open: complaints.filter(c => c.status === "open").length,
-    working: complaints.filter(c => c.status === "working").length,
-    closed: complaints.filter(c => c.status === "closed").length,
+    open: complaints.filter((c) => c.status === "open").length,
+    working: complaints.filter((c) => c.status === "working").length,
+    closed: complaints.filter((c) => c.status === "closed").length,
   };
 
-  const uniqueCategories = [...new Set(complaints.map(c => c.category))].sort();
+  const uniqueCategories = [...new Set(complaints.map((c) => c.category))].sort();
 
   const handleStatusChange = async (id: string, newStatus: string) => {
     try {
@@ -321,7 +351,7 @@ function AdminDashboard() {
   };
 
   const exportToExcel = () => {
-    const exportData = filteredComplaints.map(c => ({
+    const exportData = filteredComplaints.map((c) => ({
       Token: c.token || "N/A",
       Category: c.category,
       Department: c.department || "Unassigned",
@@ -337,33 +367,47 @@ function AdminDashboard() {
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
-    XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
+    XLSX.writeFile(
+      workbook,
+      `localvoice_complaints_${new Date().toISOString().split("T")[0]}.xlsx`,
+    );
   };
 
   const columns = [
     columnHelper.accessor("token", {
       header: "Token",
-      cell: info => <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{info.getValue() || "N/A"}</span>,
+      cell: (info) => (
+        <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">
+          {info.getValue() || "N/A"}
+        </span>
+      ),
     }),
     columnHelper.accessor("photoURL", {
       header: "Photo",
-      cell: info => {
+      cell: (info) => {
         const url = info.getValue();
         if (!url) return <span className="text-gray-400 text-xs italic">None</span>;
         return (
-          <button 
+          <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setLightboxImage(url); }} 
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxImage(url);
+            }}
             className="block w-10 h-10 rounded overflow-hidden border border-gray-200 cursor-pointer"
           >
-            <img src={url} alt="Complaint" className="w-full h-full object-cover hover:scale-110 transition-transform" />
+            <img
+              src={url}
+              alt="Complaint"
+              className="w-full h-full object-cover hover:scale-110 transition-transform"
+            />
           </button>
         );
       },
     }),
     columnHelper.accessor("category", {
       header: "Category",
-      cell: info => (
+      cell: (info) => (
         <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
           {info.getValue()}
         </span>
@@ -371,15 +415,25 @@ function AdminDashboard() {
     }),
     columnHelper.accessor("status", {
       header: "Status",
-      cell: info => (
-        <select 
+      cell: (info) => (
+        <select
           value={info.getValue() || "open"}
           onChange={(e) => handleStatusChange(info.row.original.id, e.target.value)}
           onClick={(e) => e.stopPropagation()}
           className="text-xs font-bold border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
           style={{
-            color: info.getValue() === "open" ? "#dc2626" : info.getValue() === "working" ? "#d97706" : "#16a34a",
-            backgroundColor: info.getValue() === "open" ? "#fef2f2" : info.getValue() === "working" ? "#fffbeb" : "#f0fdf4",
+            color:
+              info.getValue() === "open"
+                ? "#dc2626"
+                : info.getValue() === "working"
+                  ? "#d97706"
+                  : "#16a34a",
+            backgroundColor:
+              info.getValue() === "open"
+                ? "#fef2f2"
+                : info.getValue() === "working"
+                  ? "#fffbeb"
+                  : "#f0fdf4",
             backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
             backgroundPosition: "right 0.25rem center",
             backgroundRepeat: "no-repeat",
@@ -394,8 +448,8 @@ function AdminDashboard() {
     }),
     columnHelper.accessor("department", {
       header: "Department",
-      cell: info => (
-        <select 
+      cell: (info) => (
+        <select
           value={info.getValue() || ""}
           onChange={(e) => handleDepartmentChange(info.row.original.id, e.target.value)}
           onClick={(e) => e.stopPropagation()}
@@ -418,7 +472,7 @@ function AdminDashboard() {
     }),
     columnHelper.accessor("location", {
       header: "Location",
-      cell: info => (
+      cell: (info) => (
         <div className="flex items-center gap-1 min-w-[150px]">
           <MapPin size={14} className="text-gray-400 shrink-0" />
           <span className="text-sm truncate max-w-[200px]">{info.getValue()}</span>
@@ -427,13 +481,17 @@ function AdminDashboard() {
     }),
     columnHelper.accessor("description", {
       header: "Description",
-      cell: info => <div className="text-sm truncate max-w-[250px]">{info.getValue()}</div>,
+      cell: (info) => <div className="text-sm truncate max-w-[250px]">{info.getValue()}</div>,
     }),
     columnHelper.accessor("timestamp", {
       header: "Date",
-      cell: info => {
+      cell: (info) => {
         const ts = info.getValue();
-        return <span className="text-sm text-gray-500 whitespace-nowrap">{ts?.toDate ? new Date(ts.toDate()).toLocaleString() : ''}</span>;
+        return (
+          <span className="text-sm text-gray-500 whitespace-nowrap">
+            {ts?.toDate ? new Date(ts.toDate()).toLocaleString() : ""}
+          </span>
+        );
       },
     }),
   ];
@@ -455,26 +513,55 @@ function AdminDashboard() {
   });
 
   const defaultCenter: [number, number] = [20.5937, 78.9629];
-  const complaintsWithCoords = filteredComplaints.filter(c => c.coordinates);
-  const mapCenter = focusedLocation || (complaintsWithCoords.length > 0
-    ? [complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [number, number]
-    : defaultCenter);
+  const complaintsWithCoords = filteredComplaints.filter((c) => c.coordinates);
+  const mapCenter =
+    focusedLocation ||
+    (complaintsWithCoords.length > 0
+      ? ([complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [
+          number,
+          number,
+        ])
+      : defaultCenter);
 
   return (
     <div className="min-h-screen pt-20 px-4 max-w-7xl mx-auto flex flex-col pb-12">
       <div className="mb-6 flex justify-between items-end flex-wrap gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2 text-[color:var(--text-primary)]">Admin Dashboard</h1>
-          <p className="text-[color:var(--text-secondary)]">Real-time civic issue management and analytics.</p>
+          <h1 className="text-3xl font-bold tracking-tight mb-2 text-[color:var(--text-primary)]">
+            Admin Dashboard
+          </h1>
+          <p className="text-[color:var(--text-secondary)]">
+            Real-time civic issue management and analytics.
+          </p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={async () => { const XLSX = await import("xlsx"); const exportData = filteredComplaints.map(c => ({ Token: c.token || "N/A", Category: c.category, Status: c.status, Location: c.location, Latitude: c.coordinates?.lat || "", Longitude: c.coordinates?.lng || "", Description: c.description, Date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "", Photo: c.photoURL || "No Photo" })); const worksheet = XLSX.utils.json_to_sheet(exportData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints"); XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`); }}
+          <button
+            onClick={async () => {
+              const XLSX = await import("xlsx");
+              const exportData = filteredComplaints.map((c) => ({
+                Token: c.token || "N/A",
+                Category: c.category,
+                Status: c.status,
+                Location: c.location,
+                Latitude: c.coordinates?.lat || "",
+                Longitude: c.coordinates?.lng || "",
+                Description: c.description,
+                Date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "",
+                Photo: c.photoURL || "No Photo",
+              }));
+              const worksheet = XLSX.utils.json_to_sheet(exportData);
+              const workbook = XLSX.utils.book_new();
+              XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
+              XLSX.writeFile(
+                workbook,
+                `localvoice_complaints_${new Date().toISOString().split("T")[0]}.xlsx`,
+              );
+            }}
             className="flex items-center gap-2 text-sm text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors shadow-sm font-medium"
           >
             <Download size={16} /> Export to Excel
           </button>
-          <button 
+          <button
             onClick={() => signOut(auth)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-4 py-2 rounded-lg transition-colors shadow-sm"
           >
@@ -534,8 +621,10 @@ function AdminDashboard() {
           aria-label="Filter by category"
         >
           <option value="all">All Categories</option>
-          {uniqueCategories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
+          {uniqueCategories.map((cat) => (
+            <option key={cat} value={cat}>
+              {cat}
+            </option>
           ))}
         </select>
         <div className="flex-1 min-w-[200px] relative">
@@ -571,36 +660,49 @@ function AdminDashboard() {
               <Loader2 className="animate-spin text-blue-600" size={32} />
             </div>
           ) : (
-            <MapContainer center={mapCenter} zoom={12} scrollWheelZoom={false} className="w-full h-full absolute inset-0 z-0">
+            <MapContainer
+              center={mapCenter}
+              zoom={12}
+              scrollWheelZoom={false}
+              className="w-full h-full absolute inset-0 z-0"
+            >
               <MapFlyTo center={focusedLocation} />
               <TileLayer
                 attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                 url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
               />
-              {filteredComplaints.filter(c => c.coordinates).map((c) => (
-                <Marker 
-                  key={c.id} 
-                  position={[c.coordinates!.lat, c.coordinates!.lng]}
-                >
-                  <Popup className="rounded-lg">
-                    <div className="p-1 min-w-[200px]">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {c.category}
-                        </span>
-                        <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.token || "N/A"}</span>
+              {filteredComplaints
+                .filter((c) => c.coordinates)
+                .map((c) => (
+                  <Marker key={c.id} position={[c.coordinates!.lat, c.coordinates!.lng]}>
+                    <Popup className="rounded-lg">
+                      <div className="p-1 min-w-[200px]">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                            {c.category}
+                          </span>
+                          <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">
+                            {c.token || "N/A"}
+                          </span>
+                        </div>
+                        <h3 className="font-semibold text-sm mb-1">{c.location}</h3>
+                        <p className="text-xs text-gray-600 mb-2 line-clamp-2">{c.description}</p>
+                        {c.photoURL && (
+                          <button
+                            onClick={() => setLightboxImage(c.photoURL!)}
+                            className="w-full h-24 mt-2 block p-0 border-0 bg-transparent cursor-zoom-in"
+                          >
+                            <img
+                              src={c.photoURL}
+                              alt="Issue"
+                              className="w-full h-full object-cover rounded border border-gray-100"
+                            />
+                          </button>
+                        )}
                       </div>
-                      <h3 className="font-semibold text-sm mb-1">{c.location}</h3>
-                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{c.description}</p>
-                      {c.photoURL && (
-                        <button onClick={() => setLightboxImage(c.photoURL!)} className="w-full h-24 mt-2 block p-0 border-0 bg-transparent cursor-zoom-in">
-                           <img src={c.photoURL} alt="Issue" className="w-full h-full object-cover rounded border border-gray-100" />
-                        </button>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
+                    </Popup>
+                  </Marker>
+                ))}
             </MapContainer>
           )}
         </div>
@@ -609,34 +711,45 @@ function AdminDashboard() {
         <div className="w-full bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
           <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
             <h2 className="font-semibold text-gray-800">All Complaints Database</h2>
-            <span className="text-sm text-gray-500">{filteredComplaints.length} of {complaints.length} Records</span>
+            <span className="text-sm text-gray-500">
+              {filteredComplaints.length} of {complaints.length} Records
+            </span>
           </div>
-          
+
           <div className="overflow-x-auto">
             {loading ? (
-               <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
+              <div className="p-8 flex justify-center">
+                <Loader2 className="animate-spin text-gray-400" size={24} />
+              </div>
             ) : filteredComplaints.length === 0 ? (
               <div className="text-center py-12">
                 <div className="w-16 h-16 mx-auto rounded-full bg-gray-100 flex items-center justify-center mb-3">
                   <Search size={24} className="text-gray-400" />
                 </div>
                 <p className="text-gray-500 font-medium">No complaints match your filters.</p>
-                <p className="text-gray-400 text-sm mt-1">Try adjusting your search or filter criteria.</p>
+                <p className="text-gray-400 text-sm mt-1">
+                  Try adjusting your search or filter criteria.
+                </p>
               </div>
             ) : (
               <table className="w-full text-left border-collapse">
                 <thead>
-                  {table.getHeaderGroups().map(headerGroup => (
+                  {table.getHeaderGroups().map((headerGroup) => (
                     <tr key={headerGroup.id} className="border-b border-gray-200 bg-white">
-                      {headerGroup.headers.map(header => (
-                        <th 
-                          key={header.id} 
+                      {headerGroup.headers.map((header) => (
+                        <th
+                          key={header.id}
                           className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors"
                           onClick={header.column.getToggleSortingHandler()}
                         >
                           <div className="flex items-center gap-2">
                             {flexRender(header.column.columnDef.header, header.getContext())}
-                            <ArrowUpDown size={12} className={header.column.getIsSorted() ? "text-blue-600" : "text-gray-300"} />
+                            <ArrowUpDown
+                              size={12}
+                              className={
+                                header.column.getIsSorted() ? "text-blue-600" : "text-gray-300"
+                              }
+                            />
                           </div>
                         </th>
                       ))}
@@ -644,17 +757,17 @@ function AdminDashboard() {
                   ))}
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
-                  {table.getRowModel().rows.map(row => (
-                    <tr 
-                      key={row.id} 
+                  {table.getRowModel().rows.map((row) => (
+                    <tr
+                      key={row.id}
                       className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                       onClick={(e) => {
-                        if ((e.target as HTMLElement).tagName.toLowerCase() === 'select') return;
+                        if ((e.target as HTMLElement).tagName.toLowerCase() === "select") return;
                         const coords = row.original.coordinates;
                         if (coords) setFocusedLocation([coords.lat, coords.lng]);
                       }}
                     >
-                      {row.getVisibleCells().map(cell => (
+                      {row.getVisibleCells().map((cell) => (
                         <td key={cell.id} className="px-6 py-3">
                           {flexRender(cell.column.columnDef.cell, cell.getContext())}
                         </td>
@@ -665,12 +778,20 @@ function AdminDashboard() {
               </table>
             )}
           </div>
-          
+
           {/* Pagination Controls */}
           {filteredComplaints.length > 0 && (
             <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between">
               <div className="text-sm text-gray-500">
-                Showing {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1} to {Math.min((table.getState().pagination.pageIndex + 1) * table.getState().pagination.pageSize, filteredComplaints.length)} of {filteredComplaints.length} entries
+                Showing{" "}
+                {table.getState().pagination.pageIndex * table.getState().pagination.pageSize + 1}{" "}
+                to{" "}
+                {Math.min(
+                  (table.getState().pagination.pageIndex + 1) *
+                    table.getState().pagination.pageSize,
+                  filteredComplaints.length,
+                )}{" "}
+                of {filteredComplaints.length} entries
               </div>
               <div className="flex items-center gap-2">
                 <button
@@ -698,16 +819,18 @@ function AdminDashboard() {
 
       {/* Lightbox Modal */}
       {lightboxImage && (
-        <div 
+        <div
           role="dialog"
           aria-modal="true"
           aria-label="Enlarged complaint photo"
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4"
           onClick={() => setLightboxImage(null)}
-          onKeyDown={(e) => { if (e.key === 'Escape') setLightboxImage(null); }}
+          onKeyDown={(e) => {
+            if (e.key === "Escape") setLightboxImage(null);
+          }}
         >
           <div className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center">
-            <button 
+            <button
               className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 text-xl font-bold bg-black/50 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
               onClick={() => setLightboxImage(null)}
               autoFocus
@@ -715,11 +838,11 @@ function AdminDashboard() {
             >
               ✕
             </button>
-            <img 
-              src={lightboxImage} 
-              alt="Enlarged complaint photo" 
+            <img
+              src={lightboxImage}
+              alt="Enlarged complaint photo"
               className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>

@@ -9,6 +9,7 @@ import {
   Scripts,
 } from "@tanstack/react-router";
 import { type ReactNode } from "react";
+import { Analytics } from "@vercel/analytics/react";
 
 import appCss from "../styles.css?url";
 import { Nav } from "@/components/civic/Nav";
@@ -18,21 +19,14 @@ function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg)] px-4">
       <div className="max-w-md text-center">
-        <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">
-          Page Not Found
-        </p>
+        <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">Page Not Found</p>
 
-        <h1 className="text-8xl font-black tracking-tight text-slate-950">
-          404
-        </h1>
+        <h1 className="text-8xl font-black tracking-tight text-slate-950">404</h1>
 
-        <h2 className="mt-4 text-2xl font-semibold text-slate-900">
-          We couldn't find that page
-        </h2>
+        <h2 className="mt-4 text-2xl font-semibold text-slate-900">We couldn't find that page</h2>
 
         <p className="mt-3 text-sm leading-relaxed text-slate-500">
-          The page you're looking for may have been moved, deleted, or never
-          existed.
+          The page you're looking for may have been moved, deleted, or never existed.
         </p>
 
         <div className="mt-8">
@@ -48,13 +42,7 @@ function NotFoundComponent() {
   );
 }
 
-function ErrorComponent({
-  error,
-  reset,
-}: {
-  error: Error;
-  reset: () => void;
-}) {
+function ErrorComponent({ error, reset }: { error: Error; reset: () => void }) {
   console.error(error);
 
   const router = useRouter();
@@ -62,13 +50,9 @@ function ErrorComponent({
   return (
     <div className="flex min-h-screen items-center justify-center bg-[color:var(--bg)] px-4">
       <div className="max-w-md text-center">
-        <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">
-          Unexpected Error
-        </p>
+        <p className="mb-4 text-xs uppercase tracking-[0.4em] text-slate-500">Unexpected Error</p>
 
-        <h1 className="text-3xl font-bold text-slate-950">
-          Something interrupted the experience
-        </h1>
+        <h1 className="text-3xl font-bold text-slate-950">Something interrupted the experience</h1>
 
         <p className="mt-3 text-sm leading-relaxed text-slate-500">
           We couldn't load this page right now. Please try again in a moment.
@@ -136,8 +120,7 @@ export const Route = createRootRouteWithContext<{
 
       {
         property: "og:description",
-        content:
-          "QR-based civic issue reporting. No app. No account. No paperwork.",
+        content: "QR-based civic issue reporting. No app. No account. No paperwork.",
       },
 
       {
@@ -162,8 +145,7 @@ export const Route = createRootRouteWithContext<{
 
       {
         name: "twitter:description",
-        content:
-          "QR-powered civic issue reporting for smarter communities.",
+        content: "QR-powered civic issue reporting for smarter communities.",
       },
     ],
 
@@ -186,8 +168,7 @@ export const Route = createRootRouteWithContext<{
 
       {
         rel: "stylesheet",
-        href:
-          "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap",
+        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&family=Playfair+Display:wght@600;700&family=JetBrains+Mono:wght@400;500&display=swap",
       },
 
       {
@@ -214,6 +195,7 @@ function RootShell({ children }: { children: ReactNode }) {
       <HeadContent />
       {children}
       <Scripts />
+      <Analytics />
     </>
   );
 }

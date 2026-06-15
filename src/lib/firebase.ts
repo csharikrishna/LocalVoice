@@ -1,6 +1,10 @@
 import { initializeApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
-import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from "firebase/firestore";
+import {
+  initializeFirestore,
+  persistentLocalCache,
+  persistentMultipleTabManager,
+} from "firebase/firestore";
 import { getStorage } from "firebase/storage";
 
 // Validate environment variables at startup
@@ -13,13 +17,11 @@ const requiredEnvVars = [
   "VITE_FIREBASE_APP_ID",
 ] as const;
 
-const missingEnvVars = requiredEnvVars.filter(
-  (envVar) => !import.meta.env[envVar as string]
-);
+const missingEnvVars = requiredEnvVars.filter((envVar) => !import.meta.env[envVar as string]);
 
 if (missingEnvVars.length > 0) {
   throw new Error(
-    `Missing Firebase configuration: ${missingEnvVars.join(", ")}. Check your .env.local file.`
+    `Missing Firebase configuration: ${missingEnvVars.join(", ")}. Check your .env.local file.`,
   );
 }
 
@@ -38,7 +40,7 @@ export const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with persistence
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
 });
 
 // Initialize Storage

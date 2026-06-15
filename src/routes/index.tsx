@@ -1,8 +1,18 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import {
-  QrCode, MapPin, CheckCircle2, Zap, Camera, FolderTree,
-  LayoutDashboard, Search, Database, ShieldCheck,
-  ArrowRight, Sparkles, Printer
+  QrCode,
+  MapPin,
+  CheckCircle2,
+  Zap,
+  Camera,
+  FolderTree,
+  LayoutDashboard,
+  Search,
+  Database,
+  ShieldCheck,
+  ArrowRight,
+  Sparkles,
+  Printer,
 } from "lucide-react";
 import { PulseMap } from "@/components/civic/PulseMap";
 import { Reveal } from "@/components/civic/Reveal";
@@ -44,8 +54,7 @@ function Hero() {
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
-          background:
-            "radial-gradient(60% 50% at 85% 10%, rgba(27,79,216,0.08), transparent 60%)",
+          background: "radial-gradient(60% 50% at 85% 10%, rgba(27,79,216,0.08), transparent 60%)",
         }}
       />
       <div className="container-x relative grid lg:grid-cols-2 gap-12 lg:gap-16 items-center">
@@ -68,8 +77,12 @@ function Hero() {
             className="mt-6 font-extrabold leading-[1.05] text-5xl md:text-6xl lg:text-[72px]"
             style={{ letterSpacing: "-0.04em" }}
           >
-            <Reveal delay={120}><span className="block">Smarter</span></Reveal>
-            <Reveal delay={200}><span className="block">communities</span></Reveal>
+            <Reveal delay={120}>
+              <span className="block">Smarter</span>
+            </Reveal>
+            <Reveal delay={200}>
+              <span className="block">communities</span>
+            </Reveal>
             <Reveal delay={280}>
               <span className="block" style={{ color: "var(--primary)" }}>
                 start with a scan.
@@ -79,8 +92,8 @@ function Hero() {
 
           <Reveal delay={380}>
             <p className="mt-7 text-lg lg:text-xl text-[color:var(--text-secondary)] max-w-[560px] leading-[1.55]">
-              LocalVoice turns every public asset into a reporting channel. Scan the QR,
-              describe the problem, and it lands with the right authority — in under 60 seconds.
+              LocalVoice turns every public asset into a reporting channel. Scan the QR, describe
+              the problem, and it lands with the right authority — in under 60 seconds.
             </p>
           </Reveal>
 
@@ -123,11 +136,31 @@ function Hero() {
 
 /* ---------------- PROBLEM ---------------- */
 const painPoints = [
-  { icon: "🔇", title: "No one to call", body: "Residents don't know which department handles which issue." },
-  { icon: "📋", title: "Endless paperwork", body: "Filing a complaint requires forms, offices, and patience." },
-  { icon: "🔍", title: "Zero tracking", body: "Once submitted, complaints vanish into a black hole." },
-  { icon: "⏳", title: "Weeks of delay", body: "Minor issues remain unresolved for months at a time." },
-  { icon: "🤷", title: "No accountability", body: "No way to know if anyone is actually working on it." },
+  {
+    icon: "🔇",
+    title: "No one to call",
+    body: "Residents don't know which department handles which issue.",
+  },
+  {
+    icon: "📋",
+    title: "Endless paperwork",
+    body: "Filing a complaint requires forms, offices, and patience.",
+  },
+  {
+    icon: "🔍",
+    title: "Zero tracking",
+    body: "Once submitted, complaints vanish into a black hole.",
+  },
+  {
+    icon: "⏳",
+    title: "Weeks of delay",
+    body: "Minor issues remain unresolved for months at a time.",
+  },
+  {
+    icon: "🤷",
+    title: "No accountability",
+    body: "No way to know if anyone is actually working on it.",
+  },
 ];
 
 function Problem() {
@@ -135,17 +168,22 @@ function Problem() {
     <section className="section-y" style={{ background: "var(--surface-2)" }}>
       <div className="container-x">
         <div className="max-w-[760px] mx-auto text-center">
-          <Reveal><span className="eyebrow">The problem</span></Reveal>
+          <Reveal>
+            <span className="eyebrow">The problem</span>
+          </Reveal>
           <Reveal delay={80}>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+            <h2
+              className="mt-3 text-3xl md:text-4xl font-extrabold"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               Local problems stay broken for weeks. Sometimes months.
             </h2>
           </Reveal>
           <Reveal delay={160}>
             <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7]">
-              In most neighborhoods, reporting a broken streetlight means calling a number
-              that rings out. Reporting a pothole means finding the right office. LocalVoice
-              changes that with a single scan.
+              In most neighborhoods, reporting a broken streetlight means calling a number that
+              rings out. Reporting a pothole means finding the right office. LocalVoice changes that
+              with a single scan.
             </p>
           </Reveal>
         </div>
@@ -159,7 +197,9 @@ function Problem() {
               >
                 <div className="text-3xl">{p.icon}</div>
                 <h3 className="mt-3 text-lg font-bold">{p.title}</h3>
-                <p className="mt-1.5 text-sm text-[color:var(--text-secondary)] leading-[1.6]">{p.body}</p>
+                <p className="mt-1.5 text-sm text-[color:var(--text-secondary)] leading-[1.6]">
+                  {p.body}
+                </p>
               </div>
             </Reveal>
           ))}
@@ -172,9 +212,17 @@ function Problem() {
 /* ---------------- HOW IT WORKS ---------------- */
 const steps = [
   { n: 1, title: "Scan the QR", body: "Point your camera at the QR sticker on any public asset." },
-  { n: 2, title: "Pick a category", body: "We pre-fill location and category based on the sticker." },
+  {
+    n: 2,
+    title: "Pick a category",
+    body: "We pre-fill location and category based on the sticker.",
+  },
   { n: 3, title: "Describe it", body: "Add a quick note and optional photo. No login required." },
-  { n: 4, title: "Authority resolves it", body: "The right department gets it instantly — and you get updates." },
+  {
+    n: 4,
+    title: "Authority resolves it",
+    body: "The right department gets it instantly — and you get updates.",
+  },
 ];
 
 function HowItWorks() {
@@ -182,9 +230,14 @@ function HowItWorks() {
     <section id="how" className="section-y">
       <div className="container-x">
         <div className="max-w-[760px]">
-          <Reveal><span className="eyebrow">How it works</span></Reveal>
+          <Reveal>
+            <span className="eyebrow">How it works</span>
+          </Reveal>
           <Reveal delay={80}>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+            <h2
+              className="mt-3 text-3xl md:text-4xl font-extrabold"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               Four steps. About sixty seconds.
             </h2>
           </Reveal>
@@ -193,7 +246,10 @@ function HowItWorks() {
         <ol className="mt-12 grid sm:grid-cols-2 lg:grid-cols-4 gap-5">
           {steps.map((s, i) => (
             <Reveal key={s.n} delay={i * 90}>
-              <li className="h-full bg-white rounded-[16px] p-6 relative" style={{ border: "1px solid var(--border)" }}>
+              <li
+                className="h-full bg-white rounded-[16px] p-6 relative"
+                style={{ border: "1px solid var(--border)" }}
+              >
                 <span
                   className="inline-flex items-center justify-center w-10 h-10 rounded-[10px] font-bold text-white"
                   style={{ background: "var(--primary)" }}
@@ -201,7 +257,9 @@ function HowItWorks() {
                   {s.n}
                 </span>
                 <h3 className="mt-4 text-lg font-bold">{s.title}</h3>
-                <p className="mt-1.5 text-sm text-[color:var(--text-secondary)] leading-[1.6]">{s.body}</p>
+                <p className="mt-1.5 text-sm text-[color:var(--text-secondary)] leading-[1.6]">
+                  {s.body}
+                </p>
               </li>
             </Reveal>
           ))}
@@ -215,19 +273,28 @@ function HowItWorks() {
 function ReportSection() {
   return (
     <section className="relative overflow-hidden">
-      <div className="absolute inset-y-0 right-0 w-full lg:w-[45%]" style={{ background: "var(--primary)" }} aria-hidden="true" />
+      <div
+        className="absolute inset-y-0 right-0 w-full lg:w-[45%]"
+        style={{ background: "var(--primary)" }}
+        aria-hidden="true"
+      />
       <div className="container-x relative grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 section-y items-center">
         <div>
-          <Reveal><span className="eyebrow">Report an issue</span></Reveal>
+          <Reveal>
+            <span className="eyebrow">Report an issue</span>
+          </Reveal>
           <Reveal delay={80}>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-white lg:text-[color:var(--text-primary)]" style={{ letterSpacing: "-0.03em" }}>
+            <h2
+              className="mt-3 text-3xl md:text-4xl font-extrabold text-white lg:text-[color:var(--text-primary)]"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               It's as easy as sending a WhatsApp message.
             </h2>
           </Reveal>
           <Reveal delay={160}>
             <p className="mt-5 text-lg text-slate-300 lg:text-[color:var(--text-secondary)] leading-[1.7] max-w-[520px]">
-              Pick a category, confirm your auto-detected location, drop a quick description.
-              That's it — your complaint goes straight to the right department.
+              Pick a category, confirm your auto-detected location, drop a quick description. That's
+              it — your complaint goes straight to the right department.
             </p>
           </Reveal>
           <Reveal delay={240}>
@@ -237,7 +304,10 @@ function ReportSection() {
                 "No account or login required",
                 "Live status tracking after submission",
               ].map((t) => (
-                <li key={t} className="flex items-start gap-3 text-base text-slate-200 lg:text-[color:var(--text-primary)]">
+                <li
+                  key={t}
+                  className="flex items-start gap-3 text-base text-slate-200 lg:text-[color:var(--text-primary)]"
+                >
                   <CheckCircle2 size={20} className="text-[color:var(--success)] shrink-0 mt-0.5" />
                   <span>{t}</span>
                 </li>
@@ -259,13 +329,42 @@ function ReportSection() {
 /* ---------------- FEATURES ---------------- */
 const features = [
   { icon: Zap, title: "Instant QR scanning", body: "No app download. Just a camera." },
-  { icon: MapPin, title: "GPS auto-location", body: "Pinpoint-accurate coordinates captured the moment the form opens. No typing, no guessing.", featured: true },
-  { icon: Camera, title: "Photo evidence", body: "Attach a photo directly from your phone camera." },
-  { icon: FolderTree, title: "Smart categorization", body: "10 issue categories routed to the right department." },
-  { icon: LayoutDashboard, title: "Admin dashboard", body: "Live map, analytics, and resolution tracking." },
-  { icon: Search, title: "Track your report", body: "Look up your complaint status anytime with your tracking token." },
-  { icon: Database, title: "Digital audit trail", body: "Every complaint stored, timestamped, searchable." },
-  { icon: ShieldCheck, title: "Privacy first", body: "No account required. No personal data collected. Fully anonymous." },
+  {
+    icon: MapPin,
+    title: "GPS auto-location",
+    body: "Pinpoint-accurate coordinates captured the moment the form opens. No typing, no guessing.",
+    featured: true,
+  },
+  {
+    icon: Camera,
+    title: "Photo evidence",
+    body: "Attach a photo directly from your phone camera.",
+  },
+  {
+    icon: FolderTree,
+    title: "Smart categorization",
+    body: "10 issue categories routed to the right department.",
+  },
+  {
+    icon: LayoutDashboard,
+    title: "Admin dashboard",
+    body: "Live map, analytics, and resolution tracking.",
+  },
+  {
+    icon: Search,
+    title: "Track your report",
+    body: "Look up your complaint status anytime with your tracking token.",
+  },
+  {
+    icon: Database,
+    title: "Digital audit trail",
+    body: "Every complaint stored, timestamped, searchable.",
+  },
+  {
+    icon: ShieldCheck,
+    title: "Privacy first",
+    body: "No account required. No personal data collected. Fully anonymous.",
+  },
 ];
 
 function Features() {
@@ -273,9 +372,14 @@ function Features() {
     <section id="features" className="section-y" style={{ background: "var(--surface-2)" }}>
       <div className="container-x">
         <div className="max-w-[760px]">
-          <Reveal><span className="eyebrow">Features</span></Reveal>
+          <Reveal>
+            <span className="eyebrow">Features</span>
+          </Reveal>
           <Reveal delay={80}>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+            <h2
+              className="mt-3 text-3xl md:text-4xl font-extrabold"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               Everything local governance needs, built into a single QR scan.
             </h2>
           </Reveal>
@@ -350,9 +454,14 @@ function ExploreMore() {
     <section className="section-y">
       <div className="container-x">
         <div className="max-w-[760px]">
-          <Reveal><span className="eyebrow">Dig deeper</span></Reveal>
+          <Reveal>
+            <span className="eyebrow">Dig deeper</span>
+          </Reveal>
           <Reveal delay={80}>
-            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+            <h2
+              className="mt-3 text-3xl md:text-4xl font-extrabold"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               The story behind the scan.
             </h2>
           </Reveal>
@@ -368,9 +477,15 @@ function ExploreMore() {
               >
                 <span className="eyebrow">{c.eyebrow}</span>
                 <h3 className="mt-3 text-xl font-bold">{c.title}</h3>
-                <p className="mt-2 text-base text-[color:var(--text-secondary)] leading-[1.65]">{c.body}</p>
+                <p className="mt-2 text-base text-[color:var(--text-secondary)] leading-[1.65]">
+                  {c.body}
+                </p>
                 <span className="mt-5 inline-flex items-center gap-1.5 text-sm font-semibold text-[color:var(--primary)]">
-                  Read more <ArrowRight size={14} className="transition-transform group-hover:translate-x-0.5" />
+                  Read more{" "}
+                  <ArrowRight
+                    size={14}
+                    className="transition-transform group-hover:translate-x-0.5"
+                  />
                 </span>
               </Link>
             </Reveal>
@@ -392,15 +507,17 @@ function FinalCTA() {
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
         style={{
-          backgroundImage:
-            "radial-gradient(rgba(255,255,255,0.18) 1px, transparent 1px)",
+          backgroundImage: "radial-gradient(rgba(255,255,255,0.18) 1px, transparent 1px)",
           backgroundSize: "24px 24px",
           opacity: 0.18,
         }}
       />
       <div className="container-x relative text-center max-w-3xl mx-auto">
         <Reveal>
-          <h2 className="text-4xl md:text-5xl font-extrabold text-white" style={{ letterSpacing: "-0.03em" }}>
+          <h2
+            className="text-4xl md:text-5xl font-extrabold text-white"
+            style={{ letterSpacing: "-0.03em" }}
+          >
             Your neighborhood deserves better. Start reporting in 60 seconds.
           </h2>
         </Reveal>

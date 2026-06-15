@@ -7,9 +7,17 @@ export const Route = createFileRoute("/impact")({
   head: () => ({
     meta: [
       { title: "Impact & SDG Alignment — LocalVoice" },
-      { name: "description", content: "How LocalVoice creates measurable civic impact and aligns with five UN Sustainable Development Goals." },
+      {
+        name: "description",
+        content:
+          "How LocalVoice creates measurable civic impact and aligns with five UN Sustainable Development Goals.",
+      },
       { property: "og:title", content: "LocalVoice Impact — Aligned with five UN SDGs" },
-      { property: "og:description", content: "Real community data, measurable outcomes, and alignment with UN Sustainable Development Goals." },
+      {
+        property: "og:description",
+        content:
+          "Real community data, measurable outcomes, and alignment with UN Sustainable Development Goals.",
+      },
     ],
   }),
   component: ImpactPage,
@@ -39,9 +47,18 @@ const mapping = [
 ];
 
 const outcomes = [
-  { title: "70% Faster Resolution", desc: "By digitizing the reporting process and routing issues directly to the concerned municipal department, we eliminate manual paperwork and cut out bureaucratic red tape." },
-  { title: "Democratized Civic Access", desc: "Lowering the barrier to entry (no apps, no accounts, no language barriers) means more citizens, from youth to the elderly, are actively engaging with local governance." },
-  { title: "Data-Driven Resource Allocation", desc: "Generating real-time heatmaps of recurring neighborhood issues helps city planners proactively budget and deploy resources exactly where they are needed most." },
+  {
+    title: "70% Faster Resolution",
+    desc: "By digitizing the reporting process and routing issues directly to the concerned municipal department, we eliminate manual paperwork and cut out bureaucratic red tape.",
+  },
+  {
+    title: "Democratized Civic Access",
+    desc: "Lowering the barrier to entry (no apps, no accounts, no language barriers) means more citizens, from youth to the elderly, are actively engaging with local governance.",
+  },
+  {
+    title: "Data-Driven Resource Allocation",
+    desc: "Generating real-time heatmaps of recurring neighborhood issues helps city planners proactively budget and deploy resources exactly where they are needed most.",
+  },
 ];
 
 function ImpactPage() {
@@ -54,9 +71,16 @@ function ImpactPage() {
         }}
       >
         <div className="container-x relative">
-          <Reveal><span className="eyebrow" style={{ color: "rgba(255,255,255,0.8)" }}>Impact</span></Reveal>
+          <Reveal>
+            <span className="eyebrow" style={{ color: "rgba(255,255,255,0.8)" }}>
+              Impact
+            </span>
+          </Reveal>
           <Reveal delay={80}>
-            <h1 className="mt-3 text-4xl md:text-5xl lg:text-6xl font-extrabold text-white max-w-3xl" style={{ letterSpacing: "-0.03em" }}>
+            <h1
+              className="mt-3 text-4xl md:text-5xl lg:text-6xl font-extrabold text-white max-w-3xl"
+              style={{ letterSpacing: "-0.03em" }}
+            >
               Designed to make an impact from day one.
             </h1>
           </Reveal>
@@ -76,7 +100,10 @@ function ImpactPage() {
                 <div className="text-5xl lg:text-6xl font-extrabold tracking-tight">
                   <StatCounter value={s.value} suffix={s.suffix} />
                 </div>
-                <div className="mt-2 text-base font-semibold" style={{ color: "rgba(255,255,255,0.9)" }}>
+                <div
+                  className="mt-2 text-base font-semibold"
+                  style={{ color: "rgba(255,255,255,0.9)" }}
+                >
                   {s.label}
                 </div>
               </div>
@@ -88,9 +115,14 @@ function ImpactPage() {
       <section className="section-y bg-slate-50">
         <div className="container-x">
           <div className="max-w-3xl mx-auto text-center">
-            <Reveal><span className="eyebrow">Real-world outcomes</span></Reveal>
+            <Reveal>
+              <span className="eyebrow">Real-world outcomes</span>
+            </Reveal>
             <Reveal delay={80}>
-              <h2 className="mt-4 text-3xl md:text-4xl font-extrabold text-slate-900" style={{ letterSpacing: "-0.03em" }}>
+              <h2
+                className="mt-4 text-3xl md:text-4xl font-extrabold text-slate-900"
+                style={{ letterSpacing: "-0.03em" }}
+              >
                 Transforming civic engagement from a chore into a seamless habit.
               </h2>
             </Reveal>
@@ -115,9 +147,14 @@ function ImpactPage() {
       <section className="section-y">
         <div className="container-x">
           <div className="max-w-[760px]">
-            <Reveal><span className="eyebrow">SDG alignment</span></Reveal>
+            <Reveal>
+              <span className="eyebrow">SDG alignment</span>
+            </Reveal>
             <Reveal delay={80}>
-              <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+              <h2
+                className="mt-3 text-3xl md:text-4xl font-extrabold"
+                style={{ letterSpacing: "-0.03em" }}
+              >
                 Aligned with the United Nations Sustainable Development Goals.
               </h2>
             </Reveal>
@@ -144,17 +181,26 @@ function ImpactPage() {
           </div>
 
           <Reveal delay={200}>
-            <div className="mt-12 max-w-3xl mx-auto bg-white rounded-[16px] overflow-hidden" style={{ border: "1px solid var(--border)" }}>
+            <div
+              className="mt-12 max-w-3xl mx-auto bg-white rounded-[16px] overflow-hidden"
+              style={{ border: "1px solid var(--border)" }}
+            >
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="text-left text-[color:var(--text-secondary)]" style={{ background: "var(--surface-2)" }}>
+                  <tr
+                    className="text-left text-[color:var(--text-secondary)]"
+                    style={{ background: "var(--surface-2)" }}
+                  >
                     <th className="px-5 py-3 font-semibold">Issue type</th>
                     <th className="px-5 py-3 font-semibold">Maps to SDG</th>
                   </tr>
                 </thead>
                 <tbody>
                   {mapping.map((r, i) => (
-                    <tr key={r.issue} style={{ background: i % 2 ? "var(--surface-2)" : "var(--surface)" }}>
+                    <tr
+                      key={r.issue}
+                      style={{ background: i % 2 ? "var(--surface-2)" : "var(--surface)" }}
+                    >
                       <td className="px-5 py-3 font-medium">{r.issue}</td>
                       <td className="px-5 py-3">
                         <span

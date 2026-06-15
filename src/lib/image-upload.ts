@@ -47,7 +47,7 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
 export async function uploadImage(
   file: File,
   _complaintId: string, // Kept for API compatibility with existing code
-  onProgress?: (progress: number) => void
+  onProgress?: (progress: number) => void,
 ): Promise<string> {
   // Validate file
   const validation = validateImageFile(file);
@@ -89,12 +89,11 @@ export async function uploadImage(
     onProgress?.(100);
 
     // Inject format (f_auto) and quality (q_auto) transformations directly into the secure URL
-    // e.g., transforms https://res.cloudinary.com/.../upload/v1234/test.jpg 
+    // e.g., transforms https://res.cloudinary.com/.../upload/v1234/test.jpg
     // to https://res.cloudinary.com/.../upload/f_auto,q_auto/v1234/test.jpg
     const optimizedUrl = data.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
-    
-    return optimizedUrl;
 
+    return optimizedUrl;
   } catch (error) {
     console.error("Image upload error:", error);
     throw new ImageUploadError("Failed to upload image. Please try again.");

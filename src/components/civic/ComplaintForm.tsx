@@ -46,14 +46,7 @@
  *   • Consistent error boundary messaging
  */
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-  useReducer,
-} from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, useReducer } from "react";
 import {
   Check,
   MapPin,
@@ -69,12 +62,7 @@ import {
 } from "lucide-react";
 import { collection, addDoc, serverTimestamp } from "firebase/firestore";
 import { db } from "@/lib/firebase";
-import {
-  uploadImage,
-  validateImageFile,
-  ImageUploadError,
-  IMAGE_CONFIG,
-} from "@/lib/image-upload";
+import { uploadImage, validateImageFile, ImageUploadError, IMAGE_CONFIG } from "@/lib/image-upload";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -98,19 +86,19 @@ const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
 const NOMINATIM_HEADERS = { "Accept-Language": "en" };
 
 const CATEGORIES = [
-  { id: "streetlight",    label: "Streetlight" },
-  { id: "water",          label: "Water" },
-  { id: "garbage",        label: "Garbage" },
-  { id: "roads",          label: "Roads" },
-  { id: "drainage",       label: "Drainage" },
-  { id: "electricity",    label: "Electricity" },
-  { id: "encroachment",   label: "Encroachment" },
-  { id: "publictoilet",   label: "Public Toilet" },
-  { id: "park",           label: "Park / Garden" },
-  { id: "other",          label: "Other" },
+  { id: "streetlight", label: "Streetlight" },
+  { id: "water", label: "Water" },
+  { id: "garbage", label: "Garbage" },
+  { id: "roads", label: "Roads" },
+  { id: "drainage", label: "Drainage" },
+  { id: "electricity", label: "Electricity" },
+  { id: "encroachment", label: "Encroachment" },
+  { id: "publictoilet", label: "Public Toilet" },
+  { id: "park", label: "Park / Garden" },
+  { id: "other", label: "Other" },
 ] as const;
 
-type CategoryId = typeof CATEGORIES[number]["id"];
+type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -119,12 +107,7 @@ interface Coords {
   lng: number;
 }
 
-type SubmitPhase =
-  | "idle"
-  | "uploading"
-  | "saving"
-  | "success"
-  | "error";
+type SubmitPhase = "idle" | "uploading" | "saving" | "success" | "error";
 
 interface FormErrors {
   category?: string;
@@ -155,9 +138,19 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case "SAVING":
       return { ...state, phase: "saving", uploadProgress: 100 };
     case "SUCCESS":
-      return { phase: "success", uploadProgress: 100, errorMessage: null, trackingToken: action.token };
+      return {
+        phase: "success",
+        uploadProgress: 100,
+        errorMessage: null,
+        trackingToken: action.token,
+      };
     case "ERROR":
-      return { phase: "error", uploadProgress: 0, errorMessage: action.message, trackingToken: null };
+      return {
+        phase: "error",
+        uploadProgress: 0,
+        errorMessage: action.message,
+        trackingToken: null,
+      };
     case "RESET":
       return { phase: "idle", uploadProgress: 0, errorMessage: null, trackingToken: null };
     default:
@@ -288,7 +281,7 @@ export function ComplaintForm() {
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
   const recognitionRef = useRef<any>(null);
-  const baseTextRef = useRef("");            // text snapshot before current dictation session
+  const baseTextRef = useRef(""); // text snapshot before current dictation session
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -322,7 +315,7 @@ export function ComplaintForm() {
         }
       },
       () => setLocationText("Location access denied — please enter manually"),
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 },
     );
 
     return () => controller.abort();
@@ -331,9 +324,7 @@ export function ComplaintForm() {
   // ─── Speech recognition setup ────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    const SR = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
     if (!SR) return;
 
     setSpeechSupported(true);
@@ -359,7 +350,11 @@ export function ComplaintForm() {
       rec.onresult = null;
       rec.onerror = null;
       rec.onend = null;
-      try { rec.abort(); } catch { /* ignore */ }
+      try {
+        rec.abort();
+      } catch {
+        /* ignore */
+      }
     };
   }, []);
 
@@ -385,7 +380,7 @@ export function ComplaintForm() {
     if (!el) return;
 
     const focusable = el.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -393,12 +388,21 @@ export function ComplaintForm() {
     first?.focus();
 
     const trap = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setMapOpen(false); return; }
+      if (e.key === "Escape") {
+        setMapOpen(false);
+        return;
+      }
       if (e.key !== "Tab") return;
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     };
 
@@ -446,7 +450,10 @@ export function ComplaintForm() {
   }, []);
 
   const handleRemoveFile = useCallback(() => {
-    setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
@@ -457,12 +464,15 @@ export function ComplaintForm() {
     setDragActive(e.type === "dragenter" || e.type === "dragover");
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    handleFileSelect(e.dataTransfer.files?.[0] ?? null);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      handleFileSelect(e.dataTransfer.files?.[0] ?? null);
+    },
+    [handleFileSelect],
+  );
 
   const handleConfirmMapLocation = useCallback(async () => {
     if (!tempCoords) return;
@@ -486,7 +496,9 @@ export function ComplaintForm() {
       await navigator.clipboard.writeText(formState.trackingToken);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* Clipboard API unavailable — silent */ }
+    } catch {
+      /* Clipboard API unavailable — silent */
+    }
   }, [formState.trackingToken]);
 
   // ─── Validation ──────────────────────────────────────────────────────────────
@@ -511,65 +523,71 @@ export function ComplaintForm() {
 
   // ─── Submit ──────────────────────────────────────────────────────────────────
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    if (!validate()) return;
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isSubmitting) return;
+      if (!validate()) return;
 
-    dispatch({ type: "UPLOAD_PROGRESS", payload: 0 });
+      dispatch({ type: "UPLOAD_PROGRESS", payload: 0 });
 
-    try {
-      let photoURL: string | null = null;
+      try {
+        let photoURL: string | null = null;
 
-      if (selectedFile) {
-        photoURL = await uploadImage(selectedFile, "temp", (progress) => {
-          dispatch({ type: "UPLOAD_PROGRESS", payload: Math.round(progress * 0.9) });
-        });
-      }
-
-      dispatch({ type: "SAVING" });
-
-      const token = generateToken();
-
-      await addDoc(collection(db, "complaints"), {
-        category,
-        location: locationText,
-        coordinates: coords ?? null,
-        description: sanitise(description),
-        photoURL: photoURL ?? null,
-        timestamp: serverTimestamp(),
-        status: "open",
-        priority: "low",
-        schemaVersion: 2,
-        token,
-      });
-
-      dispatch({ type: "SUCCESS", token });
-    } catch (err) {
-      console.error("[ComplaintForm] Submit error:", err);
-
-      let message = "Failed to submit. Please check your connection and try again.";
-      if (err instanceof ImageUploadError) {
-        message = err.message;
-      } else if (err instanceof Error) {
-        if (err.message.includes("permission-denied")) {
-          message = "Permission denied. Please refresh and try again.";
-        } else if (err.message.includes("quota")) {
-          message = "Storage quota exceeded. Please contact support.";
+        if (selectedFile) {
+          photoURL = await uploadImage(selectedFile, "temp", (progress) => {
+            dispatch({ type: "UPLOAD_PROGRESS", payload: Math.round(progress * 0.9) });
+          });
         }
-      }
 
-      dispatch({ type: "ERROR", message });
-      // Auto-clear error after 5 s so the button recovers
-      setTimeout(() => dispatch({ type: "RESET" }), 5000);
-    }
-  }, [isSubmitting, validate, selectedFile, category, locationText, coords, description]);
+        dispatch({ type: "SAVING" });
+
+        const token = generateToken();
+
+        await addDoc(collection(db, "complaints"), {
+          category,
+          location: locationText,
+          coordinates: coords ?? null,
+          description: sanitise(description),
+          photoURL: photoURL ?? null,
+          timestamp: serverTimestamp(),
+          status: "open",
+          priority: "low",
+          schemaVersion: 2,
+          token,
+        });
+
+        dispatch({ type: "SUCCESS", token });
+      } catch (err) {
+        console.error("[ComplaintForm] Submit error:", err);
+
+        let message = "Failed to submit. Please check your connection and try again.";
+        if (err instanceof ImageUploadError) {
+          message = err.message;
+        } else if (err instanceof Error) {
+          if (err.message.includes("permission-denied")) {
+            message = "Permission denied. Please refresh and try again.";
+          } else if (err.message.includes("quota")) {
+            message = "Storage quota exceeded. Please contact support.";
+          }
+        }
+
+        dispatch({ type: "ERROR", message });
+        // Auto-clear error after 5 s so the button recovers
+        setTimeout(() => dispatch({ type: "RESET" }), 5000);
+      }
+    },
+    [isSubmitting, validate, selectedFile, category, locationText, coords, description],
+  );
 
   const handleReset = useCallback(() => {
     dispatch({ type: "RESET" });
     setDescription("");
     setSelectedFile(null);
-    setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setFieldErrors({});
     setCopied(false);
   }, []);
@@ -584,8 +602,8 @@ export function ComplaintForm() {
 
   const submitLabel = useMemo(() => {
     if (formState.phase === "uploading") return "Uploading…";
-    if (formState.phase === "saving")    return "Saving…";
-    if (formState.phase === "error")     return "Failed — try again";
+    if (formState.phase === "saving") return "Saving…";
+    if (formState.phase === "error") return "Failed — try again";
     return "Submit report";
   }, [formState.phase]);
 
@@ -603,7 +621,6 @@ export function ComplaintForm() {
         className="bg-white rounded-[24px] p-5 sm:p-8 w-full"
         style={{ boxShadow: "var(--shadow-xl)" }}
       >
-
         {/* ── Category ────────────────────────────────────────────────────── */}
         <fieldset className="mb-6 border-0 p-0 m-0">
           <legend className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
@@ -655,16 +672,16 @@ export function ComplaintForm() {
               placeholder="e.g. 12, Gandhi Road, Tirupati"
               className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50"
               style={{
-                border: fieldErrors.location
-                  ? "1px solid #dc2626"
-                  : "1px solid var(--border)",
+                border: fieldErrors.location ? "1px solid #dc2626" : "1px solid var(--border)",
               }}
               onFocus={(e) => {
                 e.currentTarget.style.borderColor = "var(--primary)";
                 e.currentTarget.style.boxShadow = "0 0 0 3px rgba(27,79,216,0.12)";
               }}
               onBlur={(e) => {
-                e.currentTarget.style.borderColor = fieldErrors.location ? "#dc2626" : "var(--border)";
+                e.currentTarget.style.borderColor = fieldErrors.location
+                  ? "#dc2626"
+                  : "var(--border)";
                 e.currentTarget.style.boxShadow = "none";
               }}
             />
@@ -687,7 +704,11 @@ export function ComplaintForm() {
                 {locationText}
               </span>
               {!locationDetected && (
-                <Loader2 size={14} className="animate-spin text-[color:var(--primary)] shrink-0 mt-0.5" aria-label="Detecting location" />
+                <Loader2
+                  size={14}
+                  className="animate-spin text-[color:var(--primary)] shrink-0 mt-0.5"
+                  aria-label="Detecting location"
+                />
               )}
             </div>
           )}
@@ -703,7 +724,9 @@ export function ComplaintForm() {
               >
                 {locationEditable ? "Use detected location" : "Edit manually"}
               </button>
-              <span aria-hidden="true" className="text-[color:var(--text-muted)]">·</span>
+              <span aria-hidden="true" className="text-[color:var(--text-muted)]">
+                ·
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -782,7 +805,9 @@ export function ComplaintForm() {
               e.currentTarget.style.boxShadow = "0 0 0 3px rgba(27,79,216,0.12)";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = fieldErrors.description ? "#dc2626" : "var(--border)";
+              e.currentTarget.style.borderColor = fieldErrors.description
+                ? "#dc2626"
+                : "var(--border)";
               e.currentTarget.style.boxShadow = "none";
             }}
           />
@@ -812,7 +837,10 @@ export function ComplaintForm() {
                 alt="Preview of the selected photo"
                 className="w-full h-48 object-cover"
               />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" aria-hidden="true" />
+              <div
+                className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"
+                aria-hidden="true"
+              />
               <button
                 type="button"
                 onClick={handleRemoveFile}
@@ -856,7 +884,8 @@ export function ComplaintForm() {
                 Tap to take a photo or upload
               </span>
               <span className="text-xs text-[color:var(--text-muted)]">
-                Up to {IMAGE_CONFIG.MAX_SIZE_MB}MB · {IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(" / ").toUpperCase()}
+                Up to {IMAGE_CONFIG.MAX_SIZE_MB}MB ·{" "}
+                {IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(" / ").toUpperCase()}
               </span>
             </div>
           )}
@@ -907,7 +936,9 @@ export function ComplaintForm() {
                   <Check size={12} className="text-white" aria-hidden="true" />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-green-900 text-sm">Report submitted — thank you!</p>
+                  <p className="font-semibold text-green-900 text-sm">
+                    Report submitted — thank you!
+                  </p>
                   <p className="text-xs text-green-700 mt-1">Your tracking token:</p>
                   <div className="mt-2 flex items-center gap-2">
                     <code className="flex-1 font-mono font-bold text-sm bg-green-100 text-green-900 px-2.5 py-1.5 rounded-[6px] select-all">
@@ -919,13 +950,16 @@ export function ComplaintForm() {
                       aria-label={copied ? "Copied!" : "Copy tracking token"}
                       className="shrink-0 p-2 rounded-[6px] bg-green-100 hover:bg-green-200 text-green-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
                     >
-                      {copied
-                        ? <CheckCheck size={15} aria-hidden="true" />
-                        : <Copy size={15} aria-hidden="true" />
-                      }
+                      {copied ? (
+                        <CheckCheck size={15} aria-hidden="true" />
+                      ) : (
+                        <Copy size={15} aria-hidden="true" />
+                      )}
                     </button>
                   </div>
-                  <p className="text-xs text-green-600 mt-2">Save this token to check your complaint status.</p>
+                  <p className="text-xs text-green-600 mt-2">
+                    Save this token to check your complaint status.
+                  </p>
                 </div>
               </div>
             </div>
@@ -950,10 +984,13 @@ export function ComplaintForm() {
               boxShadow: !isSubmitting ? "0 4px 16px rgba(27,79,216,0.25)" : "none",
             }}
           >
-            {isSubmitting
-              ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}</>
-              : submitLabel
-            }
+            {isSubmitting ? (
+              <>
+                <Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}
+              </>
+            ) : (
+              submitLabel
+            )}
           </button>
         )}
       </form>
@@ -1013,7 +1050,10 @@ export function ComplaintForm() {
               <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[90%] sm:w-80 z-[400] pointer-events-none">
                 <div
                   className="bg-white rounded-[16px] p-4 pointer-events-auto"
-                  style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.15)", border: "1px solid var(--border)" }}
+                  style={{
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+                    border: "1px solid var(--border)",
+                  }}
                 >
                   <p className="text-xs text-[color:var(--text-secondary)] text-center mb-3">
                     Drag the pin to the exact location of the issue.
@@ -1024,10 +1064,14 @@ export function ComplaintForm() {
                     disabled={mapGeocoding}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-[10px] bg-[color:var(--primary)] text-white font-semibold text-sm transition-all disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
                   >
-                    {mapGeocoding
-                      ? <><Loader2 size={16} className="animate-spin" aria-hidden="true" /> Updating location…</>
-                      : "Confirm location"
-                    }
+                    {mapGeocoding ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Updating
+                        location…
+                      </>
+                    ) : (
+                      "Confirm location"
+                    )}
                   </button>
                 </div>
               </div>

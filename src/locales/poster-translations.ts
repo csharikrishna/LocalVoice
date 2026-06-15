@@ -3,78 +3,84 @@ export const POSTER_TRANSLATIONS: Record<string, any> = {
     name: "English",
     civicPlatform: "Civic Reporting Platform",
     headline: "Report Local Issues<br />In Seconds",
-    scanToReport: "Scan the QR code to report garbage, broken streetlights, water leaks, damaged roads, and other civic issues directly to local authorities.",
+    scanToReport:
+      "Scan the QR code to report garbage, broken streetlights, water leaks, damaged roads, and other civic issues directly to local authorities.",
     categories: ["Garbage", "Streetlights", "Water Leaks", "Road Damage"],
     scanWithCamera: "Scan With Your Camera",
     noAppNeeded: "No app required • No account needed",
     makingCommunitiesBetter: "Making Communities Better Together",
     headlineClass: "text-4xl leading-[1.15]",
     descClass: "text-lg",
-    categoryClass: "text-sm"
+    categoryClass: "text-sm",
   },
   tel: {
     name: "Telugu (తెలుగు)",
     civicPlatform: "పౌర ఫిర్యాదుల వేదిక",
     headline: "స్థానిక సమస్యలను<br />క్షణాల్లో నివేదించండి",
-    scanToReport: "చెత్త, వీధి దీపాలు, నీటి లీకేజీలు, పాడైన రోడ్లు మరియు ఇతర పౌర సమస్యలను నేరుగా స్థానిక అధికారులకు నివేదించడానికి QR కోడ్‌ను స్కాన్ చేయండి.",
+    scanToReport:
+      "చెత్త, వీధి దీపాలు, నీటి లీకేజీలు, పాడైన రోడ్లు మరియు ఇతర పౌర సమస్యలను నేరుగా స్థానిక అధికారులకు నివేదించడానికి QR కోడ్‌ను స్కాన్ చేయండి.",
     categories: ["చెత్త", "వీధి దీపాలు", "నీటి లీకేజీలు", "పాడైన రోడ్లు"],
     scanWithCamera: "మీ కెమెరాతో స్కాన్ చేయండి",
     noAppNeeded: "యాప్ అవసరం లేదు • అకౌంట్ అవసరం లేదు",
     makingCommunitiesBetter: "అందరం కలిసి మన సమాజాన్ని మెరుగుపరుద్దాం",
     headlineClass: "text-3xl leading-[1.3]",
     descClass: "text-base",
-    categoryClass: "text-xs"
+    categoryClass: "text-xs",
   },
   tam: {
     name: "Tamil (தமிழ்)",
     civicPlatform: "குடிமக்கள் புகார் தளம்",
     headline: "உள்ளூர் பிரச்சனைகளை<br />நொடிகளில் புகாரளிக்கவும்",
-    scanToReport: "குப்பைகள், உடைந்த தெருவிளக்குகள், நீர் கசிவு, சேதமடைந்த சாலைகள் மற்றும் பிற குடிமக்கள் பிரச்சனைகளை நேரடியாக உள்ளூர் அதிகாரிகளிடம் புகாரளிக்க QR குறியீட்டை ஸ்கேன் செய்யவும்.",
+    scanToReport:
+      "குப்பைகள், உடைந்த தெருவிளக்குகள், நீர் கசிவு, சேதமடைந்த சாலைகள் மற்றும் பிற குடிமக்கள் பிரச்சனைகளை நேரடியாக உள்ளூர் அதிகாரிகளிடம் புகாரளிக்க QR குறியீட்டை ஸ்கேன் செய்யவும்.",
     categories: ["குப்பை", "தெரு விளக்குகள்", "நீர் கசிவு", "சாலை சேதம்"],
     scanWithCamera: "உங்கள் கேமரா மூலம் ஸ்கேன் செய்யவும்",
     noAppNeeded: "ஆப் தேவையில்லை • கணக்கு தேவையில்லை",
     makingCommunitiesBetter: "ஒன்றாக இணைந்து நமது சமூகத்தை மேம்படுத்துவோம்",
     headlineClass: "text-2xl leading-[1.4]",
     descClass: "text-sm",
-    categoryClass: "text-xs"
+    categoryClass: "text-xs",
   },
   kan: {
     name: "Kannada (ಕನ್ನಡ)",
     civicPlatform: "ನಾಗರಿಕ ವರದಿ ವೇದಿಕೆ",
     headline: "ಸ್ಥಳೀಯ ಸಮಸ್ಯೆಗಳನ್ನು<br />ಕ್ಷಣಗಳಲ್ಲಿ ವರದಿ ಮಾಡಿ",
-    scanToReport: "ಕಸ, ಹಾಳಾದ ಬೀದಿ ದೀಪಗಳು, ನೀರಿನ ಸೋರಿಕೆ, ಹಾಳಾದ ರಸ್ತೆಗಳು ಮತ್ತು ಇತರ ನಾಗರಿಕ ಸಮಸ್ಯೆಗಳನ್ನು ನೇರವಾಗಿ ಸ್ಥಳೀಯ ಅಧಿಕಾರಿಗಳಿಗೆ ವರದಿ ಮಾಡಲು QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.",
+    scanToReport:
+      "ಕಸ, ಹಾಳಾದ ಬೀದಿ ದೀಪಗಳು, ನೀರಿನ ಸೋರಿಕೆ, ಹಾಳಾದ ರಸ್ತೆಗಳು ಮತ್ತು ಇತರ ನಾಗರಿಕ ಸಮಸ್ಯೆಗಳನ್ನು ನೇರವಾಗಿ ಸ್ಥಳೀಯ ಅಧಿಕಾರಿಗಳಿಗೆ ವರದಿ ಮಾಡಲು QR ಕೋಡ್ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ.",
     categories: ["ಕಸ", "ಬೀದಿ ದೀಪಗಳು", "ನೀರಿನ ಸೋರಿಕೆ", "ರಸ್ತೆ ಹಾನಿ"],
     scanWithCamera: "ನಿಮ್ಮ ಕ್ಯಾಮೆರಾದಿಂದ ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
     noAppNeeded: "ಯಾವುದೇ ಆಪ್ ಅಗತ್ಯವಿಲ್ಲ • ಯಾವುದೇ ಖಾತೆ ಅಗತ್ಯವಿಲ್ಲ",
     makingCommunitiesBetter: "ಒಟ್ಟಾಗಿ ನಮ್ಮ ಸಮಾಜವನ್ನು ಉತ್ತಮಗೊಳಿಸೋಣ",
     headlineClass: "text-3xl leading-[1.3]",
     descClass: "text-base",
-    categoryClass: "text-xs"
+    categoryClass: "text-xs",
   },
   mal: {
     name: "Malayalam (മലയാളം)",
     civicPlatform: "സിവിക് റിപ്പോർട്ടിംഗ് പ്ലാറ്റ്ഫോം",
     headline: "പ്രാദേശിക പ്രശ്നങ്ങൾ<br />നിമിഷങ്ങൾക്കുള്ളിൽ റിപ്പോർട്ട് ചെയ്യുക",
-    scanToReport: "മാലിന്യം, കേടായ തെരുവുവിളക്കുകൾ, വെള്ളം ചോർച്ച, തകർന്ന റോഡുകൾ, മറ്റ് പ്രാദേശിക പ്രശ്നങ്ങൾ എന്നിവ നേരിട്ട് അധികാരികളെ അറിയിക്കാൻ QR കോഡ് സ്കാൻ ചെയ്യുക.",
+    scanToReport:
+      "മാലിന്യം, കേടായ തെരുവുവിളക്കുകൾ, വെള്ളം ചോർച്ച, തകർന്ന റോഡുകൾ, മറ്റ് പ്രാദേശിക പ്രശ്നങ്ങൾ എന്നിവ നേരിട്ട് അധികാരികളെ അറിയിക്കാൻ QR കോഡ് സ്കാൻ ചെയ്യുക.",
     categories: ["മാലിന്യം", "തെരുവുവിളക്കുകൾ", "വെള്ളം ചോർച്ച", "തകർന്ന റോഡുകൾ"],
     scanWithCamera: "നിങ്ങളുടെ ക്യാമറ ഉപയോഗിച്ച് സ്കാൻ ചെയ്യുക",
     noAppNeeded: "ആപ്പ് ആവശ്യമില്ല • അക്കൗണ്ട് ആവശ്യമില്ല",
     makingCommunitiesBetter: "നമുക്ക് ഒന്നിച്ച് നമ്മുടെ നാടിനെ മികച്ചതാക്കാം",
     headlineClass: "text-[1.6rem] leading-[1.4]",
     descClass: "text-sm",
-    categoryClass: "text-xs"
+    categoryClass: "text-xs",
   },
   hin: {
     name: "Hindi (हिंदी)",
     civicPlatform: "नागरिक रिपोर्टिंग मंच",
     headline: "सेकंडों में स्थानीय समस्याओं<br />की रिपोर्ट करें",
-    scanToReport: "कचरा, टूटी स्ट्रीट लाइट, पानी का रिसाव, खराब सड़कें और अन्य नागरिक समस्याओं को सीधे स्थानीय अधिकारियों को रिपोर्ट करने के लिए QR कोड स्कैन करें।",
+    scanToReport:
+      "कचरा, टूटी स्ट्रीट लाइट, पानी का रिसाव, खराब सड़कें और अन्य नागरिक समस्याओं को सीधे स्थानीय अधिकारियों को रिपोर्ट करने के लिए QR कोड स्कैन करें।",
     categories: ["कचरा", "स्ट्रीट लाइट", "पानी का रिसाव", "खराब सड़कें"],
     scanWithCamera: "अपने कैमरे से स्कैन करें",
     noAppNeeded: "कोई ऐप नहीं चाहिए • कोई खाता नहीं चाहिए",
     makingCommunitiesBetter: "साथ मिलकर समुदायों को बेहतर बनाएं",
     headlineClass: "text-3xl leading-[1.3]",
     descClass: "text-base",
-    categoryClass: "text-xs"
-  }
+    categoryClass: "text-xs",
+  },
 };
