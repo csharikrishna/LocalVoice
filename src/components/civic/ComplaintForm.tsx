@@ -370,8 +370,8 @@ function StructuredLocationInput({
 export function ComplaintForm() {
   // ── Field state ─────────────────────────────────────────────────────────────
   const [category, setCategory] = useState<CategoryId>("streetlight");
-  const [locationText, setLocationText] = useState("Detecting your location…");
-  const [locationEditable, setLocationEditable] = useState(false);
+  const [locationText, setLocationText] = useState("");
+  const [locationEditable, setLocationEditable] = useState(true);
   const [locationDetected, setLocationDetected] = useState(false);
   const [description, setDescription] = useState("");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
@@ -405,11 +405,16 @@ export function ComplaintForm() {
   const geoAbortRef = useRef<AbortController | null>(null);
 
   // ─── Geolocation ────────────────────────────────────────────────────────────
-  useEffect(() => {
+  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
+
+  const requestLocation = useCallback(() => {
     if (!navigator.geolocation) {
-      setLocationText("Location unavailable");
+      setFieldErrors(prev => ({ ...prev, location: "Location is not supported by your browser." }));
       return;
     }
+
+    setIsDetectingLocation(true);
+    setFieldErrors(prev => ({ ...prev, location: undefined }));
 
     const controller = new AbortController();
     geoAbortRef.current = controller;
@@ -421,24 +426,24 @@ export function ComplaintForm() {
           setLocationText(address);
           setCoords({ lat: latitude, lng: longitude });
           setLocationDetected(true);
+          setLocationEditable(false);
         } catch {
-          // AbortError is expected on cleanup; others show coords fallback
           if (!controller.signal.aborted) {
             setLocationText(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
             setCoords({ lat: latitude, lng: longitude });
             setLocationDetected(true);
+            setLocationEditable(false);
           }
+        } finally {
+          setIsDetectingLocation(false);
         }
       },
       (error) => {
-        // Silently fall back to manual entry without alarming the user
-        setLocationText("");
-        setLocationEditable(true);
+        setIsDetectingLocation(false);
+        setFieldErrors(prev => ({ ...prev, location: "Location access denied. Please enter manually." }));
       },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
     );
-
-    return () => controller.abort();
   }, []);
 
   // ─── Speech recognition setup ────────────────────────────────────────────────
@@ -792,7 +797,32 @@ export function ComplaintForm() {
           </label>
 
           {locationEditable ? (
-            <div id="location-input" aria-describedby={fieldErrors.location ? "location-error" : undefined}>
+            <div className="flex flex-col gap-4" id="location-input" aria-describedby={fieldErrors.location ? "location-error" : undefined}>
+              <button
+                type="button"
+                onClick={requestLocation}
+                disabled={isSubmitting || isDetectingLocation}
+                className="flex items-center justify-center gap-2 w-full py-3 rounded-[10px] text-sm font-semibold transition-all border border-[color:var(--primary)] text-[color:var(--primary)] hover:bg-blue-50 disabled:opacity-50"
+              >
+                {isDetectingLocation ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    Detecting Location...
+                  </>
+                ) : (
+                  <>
+                    <MapPin size={16} />
+                    Check for Auto-Location
+                  </>
+                )}
+              </button>
+              
+              <div className="flex items-center gap-3">
+                <hr className="flex-1 border-[color:var(--border)]" />
+                <span className="text-[10px] font-bold text-[color:var(--text-muted)] tracking-wider">OR ENTER MANUALLY</span>
+                <hr className="flex-1 border-[color:var(--border)]" />
+              </div>
+
               <StructuredLocationInput 
                 onChange={setLocationText} 
                 disabled={isSubmitting} 
