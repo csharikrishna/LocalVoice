@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useMemo, useCallback } from "react";
 import { collection, query, orderBy, updateDoc, doc, onSnapshot } from "firebase/firestore";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
@@ -304,21 +304,21 @@ function AdminDashboard() {
 
   const uniqueCategories = [...new Set(complaints.map(c => c.category))].sort();
 
-  const handleStatusChange = async (id: string, newStatus: string) => {
+  const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
     try {
       await updateDoc(doc(db, "complaints", id), { status: newStatus });
     } catch (err) {
       console.error("Failed to update status", err);
     }
-  };
+  }, []);
 
-  const handleDepartmentChange = async (id: string, newDepartment: string) => {
+  const handleDepartmentChange = useCallback(async (id: string, newDepartment: string) => {
     try {
       await updateDoc(doc(db, "complaints", id), { department: newDepartment });
     } catch (err) {
       console.error("Failed to update department", err);
     }
-  };
+  }, []);
 
   const exportToExcel = () => {
     const exportData = filteredComplaints.map(c => ({
@@ -340,7 +340,7 @@ function AdminDashboard() {
     XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
   };
 
-  const columns = [
+  const columns = useMemo(() => [
     columnHelper.accessor("token", {
       header: "Token",
       cell: info => <span className="font-mono text-xs bg-gray-100 px-2 py-1 rounded">{info.getValue() || "N/A"}</span>,
@@ -436,7 +436,7 @@ function AdminDashboard() {
         return <span className="text-sm text-gray-500 whitespace-nowrap">{ts?.toDate ? new Date(ts.toDate()).toLocaleString() : ''}</span>;
       },
     }),
-  ];
+  ], [handleStatusChange, handleDepartmentChange]);
 
   const table = useReactTable({
     data: filteredComplaints,
