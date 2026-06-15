@@ -5,7 +5,7 @@ import { db } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
-import { MapPin, Search, Loader2, Clock, CheckCircle2, AlertCircle, Wrench, ThumbsUp, Filter, List, Map as MapIcon } from "lucide-react";
+import { MapPin, Search, Loader2, Clock, CheckCircle2, AlertCircle, Wrench, ThumbsUp, Filter, List, Map as MapIcon, ChevronDown } from "lucide-react";
 import { Reveal } from "@/components/civic/Reveal";
 
 // Fix leaflet icon
@@ -63,6 +63,7 @@ function PublicMapRoute() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
 
   useEffect(() => {
@@ -164,15 +165,48 @@ function PublicMapRoute() {
               </button>
             </div>
             <div className="h-6 w-px bg-slate-200 mx-1"></div>
-            <select
-              value={filter}
-              onChange={(e) => setFilter(e.target.value as any)}
-              className="text-sm font-medium bg-transparent border-none outline-none cursor-pointer text-slate-700 pr-2"
-            >
-              <option value="all">All Issues</option>
-              <option value="open">Unresolved</option>
-              <option value="resolved">Resolved</option>
-            </select>
+            <div className="relative">
+              <button
+                onClick={() => setIsFilterOpen(!isFilterOpen)}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-white border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+              >
+                <Filter size={14} className="text-slate-400" />
+                {filter === "all" ? "All Issues" : filter === "open" ? "Unresolved" : "Resolved"}
+                <ChevronDown size={14} className={`text-slate-400 transition-transform ${isFilterOpen ? "rotate-180" : ""}`} />
+              </button>
+              
+              {isFilterOpen && (
+                <>
+                  <div 
+                    className="fixed inset-0 z-40"
+                    onClick={() => setIsFilterOpen(false)}
+                  />
+                  <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-[var(--shadow-lg)] z-50 py-1 overflow-hidden origin-top-right animate-in fade-in zoom-in duration-200">
+                    <button
+                      onClick={() => { setFilter("all"); setIsFilterOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "all" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
+                    >
+                      All Issues
+                      {filter === "all" && <CheckCircle2 size={14} className="text-[color:var(--primary)]" />}
+                    </button>
+                    <button
+                      onClick={() => { setFilter("open"); setIsFilterOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "open" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
+                    >
+                      Unresolved
+                      {filter === "open" && <CheckCircle2 size={14} className="text-[color:var(--primary)]" />}
+                    </button>
+                    <button
+                      onClick={() => { setFilter("resolved"); setIsFilterOpen(false); }}
+                      className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "resolved" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
+                    >
+                      Resolved
+                      {filter === "resolved" && <CheckCircle2 size={14} className="text-[color:var(--primary)]" />}
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           </div>
         </Reveal>
       </div>

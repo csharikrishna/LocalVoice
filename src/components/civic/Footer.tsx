@@ -35,7 +35,7 @@ export function Footer() {
         <div>
           <h4 className="text-white text-sm font-semibold mb-3">Project info</h4>
           <ul className="space-y-2 text-sm">
-            <li>Institution: SV University</li>
+            <li>Institution: Annamacharya Institute of Technology and Sciences</li>
             <li>Discipline: Community Service</li>
             <li>Academic year: 2026–27</li>
             <li>Guide: Dr. P. Ramesh</li>
