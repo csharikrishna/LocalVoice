@@ -12,7 +12,7 @@
 
 <hr />
 
-## 📖 About LocalVoice
+## About LocalVoice
 
 LocalVoice (formerly CivicScan) is a progressive civic engagement platform designed to bridge the gap between citizens and local government authorities. Built initially under the APSCHE Community Service Guidelines (Tirupati, Andhra Pradesh), it empowers individuals to instantly report community issues—such as broken streetlights, overflowing garbage, or road damage—by simply scanning a QR code placed on local infrastructure.
 
@@ -20,19 +20,19 @@ LocalVoice (formerly CivicScan) is a progressive civic engagement platform desig
 
 ---
 
-## ✨ Key Features
+## Key Features
 
-- **📍 Instant GPS Auto-Location**: Pinpoint-accurate coordinates and reverse-geocoded addresses are captured automatically the moment the form opens.
-- **⚡ Frictionless Reporting Flow**: Users can submit an issue in under 60 seconds with our optimized, mobile-first interface.
-- **🎤 Voice-to-Text Integration**: Citizens can dictate their issues naturally using the built-in microphone feature powered by browser Speech Recognition.
-- **📸 High-Speed Photo Uploads**: Direct camera integration via Cloudinary allows users to attach photos of the problem instantly, without burdening the database.
-- **🗺️ Public Pulse Map**: An interactive map tracks all issues globally. Citizens can view and upvote existing complaints to highlight their severity without submitting duplicate tickets.
-- **🏛️ Real-Time Admin Dashboard**: A dedicated dashboard allows city departments to filter, assign, map, and update the status of complaints in real-time.
-- **🖨️ QR Poster Generator**: Automatically generate and print localized, translated QR code posters to stick around neighborhoods.
+- **Instant GPS Auto-Location**: Pinpoint-accurate coordinates and reverse-geocoded addresses are captured automatically the moment the form opens.
+- **Frictionless Reporting Flow**: Users can submit an issue in under 60 seconds with our optimized, mobile-first interface.
+- **Voice-to-Text Integration**: Citizens can dictate their issues naturally using the built-in microphone feature powered by browser Speech Recognition.
+- **High-Speed Photo Uploads**: Direct camera integration via Cloudinary allows users to attach photos of the problem instantly, without burdening the database.
+- **Public Pulse Map**: An interactive map tracks all issues globally. Citizens can view and upvote existing complaints to highlight their severity without submitting duplicate tickets.
+- **Real-Time Admin Dashboard**: A dedicated dashboard allows city departments to filter, assign, map, and update the status of complaints in real-time.
+- **QR Poster Generator**: Automatically generate and print localized, translated QR code posters to stick around neighborhoods.
 
 ---
 
-## 🛠️ Technology Stack
+## Technology Stack
 
 LocalVoice is built using modern, lightning-fast web technologies to ensure a premium user experience and robust scalability.
 
@@ -51,7 +51,7 @@ LocalVoice is built using modern, lightning-fast web technologies to ensure a pr
 
 ---
 
-## 🚀 Getting Started
+## Getting Started
 
 Follow these steps to set up the project locally for development.
 
@@ -100,7 +100,7 @@ Follow these steps to set up the project locally for development.
 
 ---
 
-## 🛡️ Architecture & Security
+## Architecture & Security
 
 ### Firebase Security Rules
 LocalVoice utilizes strict `firestore.rules` to ensure proper data isolation and upvoting functionality without requiring user authentication. Features like atomic `.increment()` operations prevent race conditions and vote manipulation.
@@ -110,7 +110,7 @@ Images are uploaded directly from the client to **Cloudinary** using unauthentic
 
 ---
 
-## 🤝 Contributing
+## Contributing
 
 We welcome contributions from developers, designers, and civic tech enthusiasts! 
 
@@ -122,8 +122,8 @@ We welcome contributions from developers, designers, and civic tech enthusiasts!
 
 ---
 
-## 📝 License
+## License
 
 Distributed under the MIT License. See `LICENSE` for more information.
 
-> **LocalVoice** · Built with ❤️ for community service and civic engagement.
+> **LocalVoice** · Built for community service and civic engagement.
