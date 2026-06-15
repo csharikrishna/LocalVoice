@@ -1,3 +1,5 @@
+import imageCompression from "browser-image-compression";
+
 // Constants for image validation
 export const IMAGE_CONFIG = {
   MAX_SIZE_MB: 5,
@@ -64,13 +66,23 @@ export async function uploadImage(
 
   const url = `https://api.cloudinary.com/v1_1/${cloudName}/image/upload`;
 
-  const formData = new FormData();
-  formData.append("file", file);
-  formData.append("upload_preset", uploadPreset);
-
   try {
-    // Simulate initial progress
+    // Phase 4: Media & Storage Optimization
+    // Compress image and strip EXIF data before upload
+    onProgress?.(10);
+    const options = {
+      maxSizeMB: 1.5,           // Compress to ~1.5MB max
+      maxWidthOrHeight: 1920,   // Max dimension 1080p equivalent
+      useWebWorker: true,
+      exifOrientation: true     // Read EXIF to orient correctly, then strip all other EXIF data
+    };
+    
+    const compressedFile = await imageCompression(file, options);
     onProgress?.(30);
+
+    const formData = new FormData();
+    formData.append("file", compressedFile);
+    formData.append("upload_preset", uploadPreset);
 
     const response = await fetch(url, {
       method: "POST",
