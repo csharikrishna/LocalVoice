@@ -67,8 +67,9 @@ import {
   CheckCheck,
   ChevronDown,
 } from "lucide-react";
-import { collection, addDoc, serverTimestamp } from "firebase/firestore";
+import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
 import { db } from "@/lib/firebase";
+import { z } from "zod";
 import {
   uploadImage,
   validateImageFile,
@@ -132,6 +133,17 @@ interface FormErrors {
   description?: string;
   photo?: string;
 }
+
+const formSchema = z.object({
+  description: z.string()
+    .min(10, "Description must be at least 10 characters.")
+    .max(300, "Description is too long."),
+  locationText: z.string()
+    .min(1, "Location is required. Please wait or enter it manually.")
+    .refine((val) => val !== "Detecting your location…", {
+      message: "Location is required. Please wait or enter it manually.",
+    }),
+});
 
 // Single-reducer state keeps the form coherent; no out-of-sync booleans
 interface FormState {
@@ -210,6 +222,58 @@ function sanitise(text: string): string {
   return text.trim().replace(/\s+/g, " ");
 }
 
+const RATE_LIMIT_KEY = "civicscan_submissions";
+const MAX_SUBMISSIONS_PER_HOUR = 3;
+
+function checkRateLimit(): boolean {
+  try {
+    const now = Date.now();
+    const history = JSON.parse(localStorage.getItem(RATE_LIMIT_KEY) || "[]");
+    const lastHour = history.filter((ts: number) => now - ts < 3600000);
+    if (lastHour.length >= MAX_SUBMISSIONS_PER_HOUR) return false;
+    lastHour.push(now);
+    localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(lastHour));
+    return true;
+  } catch {
+    return true;
+  }
+}
+
+function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
+  const R = 6371e3;
+  const φ1 = lat1 * Math.PI/180;
+  const φ2 = lat2 * Math.PI/180;
+  const Δφ = (lat2-lat1) * Math.PI/180;
+  const Δλ = (lon2-lon1) * Math.PI/180;
+  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  return R * c;
+}
+
+function getDepartmentForCategory(category: CategoryId): string {
+  switch (category) {
+    case "streetlight":
+    case "electricity": return "Electrical";
+    case "water":
+    case "drainage": return "Water Board";
+    case "garbage":
+    case "publictoilet": return "Sanitation";
+    case "roads":
+    case "encroachment": return "Public Works";
+    case "park": return "Parks & Rec";
+    default: return "";
+  }
+}
+
+function calculatePriority(description: string): string {
+  const desc = description.toLowerCase();
+  const highPriority = ["live wire", "fire", "flood", "urgent", "accident", "danger", "hazard", "spark"];
+  if (highPriority.some(kw => desc.includes(kw))) return "high";
+  const mediumPriority = ["broken", "pothole", "leak", "smell", "dead animal"];
+  if (mediumPriority.some(kw => desc.includes(kw))) return "medium";
+  return "low";
+}
+
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface ProgressBarProps {
@@ -253,6 +317,51 @@ function FieldError({ id, message }: FieldErrorProps) {
       <AlertCircle size={12} aria-hidden="true" />
       {message}
     </p>
+  );
+}
+
+function StructuredLocationInput({ 
+  onChange, 
+  disabled,
+  error
+}: { 
+  onChange: (val: string) => void; 
+  disabled?: boolean;
+  error?: string;
+}) {
+  const [street, setStreet] = useState("");
+  const [landmark, setLandmark] = useState("");
+  const [pincode, setPincode] = useState("");
+
+  useEffect(() => {
+    const parts = [street, landmark, pincode ? `Pincode: ${pincode}` : ""].filter(Boolean);
+    onChange(parts.join(", "));
+  }, [street, landmark, pincode, onChange]);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <input 
+        type="text" placeholder="Street / Area Name *" required 
+        value={street} onChange={e => setStreet(e.target.value)}
+        disabled={disabled}
+        className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50"
+        style={{ border: error ? "1px solid #dc2626" : "1px solid var(--border)" }}
+      />
+      <div className="flex gap-3">
+        <input 
+          type="text" placeholder="Landmark (optional)" 
+          value={landmark} onChange={e => setLandmark(e.target.value)}
+          disabled={disabled}
+          className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50 border border-[color:var(--border)] focus:border-[color:var(--primary)]"
+        />
+        <input 
+          type="text" placeholder="Pincode" 
+          value={pincode} onChange={e => setPincode(e.target.value)}
+          disabled={disabled}
+          className="w-1/2 px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50 border border-[color:var(--border)] focus:border-[color:var(--primary)]"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -321,7 +430,11 @@ export function ComplaintForm() {
           }
         }
       },
-      () => setLocationText("Location access denied — please enter manually"),
+      (error) => {
+        // Silently fall back to manual entry without alarming the user
+        setLocationText("");
+        setLocationEditable(true);
+      },
       { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
     );
 
@@ -492,21 +605,20 @@ export function ComplaintForm() {
   // ─── Validation ──────────────────────────────────────────────────────────────
 
   const validate = useCallback((): boolean => {
-    const errors: FormErrors = {};
-    const cleanDesc = sanitise(description);
-
-    if (!cleanDesc) {
-      errors.description = "Please describe the issue.";
-    } else if (cleanDesc.length < 10) {
-      errors.description = "Description must be at least 10 characters.";
+    const data = { description: sanitise(description), locationText };
+    const result = formSchema.safeParse(data);
+    
+    if (!result.success) {
+      const formatted = result.error.format();
+      setFieldErrors({
+        description: formatted.description?._errors[0],
+        location: formatted.locationText?._errors[0],
+      });
+      return false;
     }
 
-    if (!locationText || locationText === "Detecting your location…") {
-      errors.location = "Location is required. Please wait or enter it manually.";
-    }
-
-    setFieldErrors(errors);
-    return Object.keys(errors).length === 0;
+    setFieldErrors({});
+    return true;
   }, [description, locationText]);
 
   // ─── Submit ──────────────────────────────────────────────────────────────────
@@ -515,6 +627,41 @@ export function ComplaintForm() {
     e.preventDefault();
     if (isSubmitting) return;
     if (!validate()) return;
+
+    if (!checkRateLimit()) {
+      dispatch({ type: "ERROR", message: "You have reached the maximum number of submissions. Please try again later." });
+      setTimeout(() => dispatch({ type: "RESET" }), 5000);
+      return;
+    }
+
+    if (coords) {
+      try {
+        const q = query(
+          collection(db, "complaints"),
+          where("category", "==", category),
+          where("status", "==", "open")
+        );
+        const snapshot = await getDocs(q);
+        let duplicateFound = false;
+        for (const doc of snapshot.docs) {
+          const data = doc.data();
+          if (data.coordinates) {
+            const dist = getDistance(coords.lat, coords.lng, data.coordinates.lat, data.coordinates.lng);
+            if (dist < 50) { // 50 meters
+              duplicateFound = true;
+              break;
+            }
+          }
+        }
+        if (duplicateFound) {
+          dispatch({ type: "ERROR", message: "A similar issue has already been reported nearby. Please check the public map to upvote it." });
+          setTimeout(() => dispatch({ type: "RESET" }), 5000);
+          return;
+        }
+      } catch (err) {
+        // fail open if duplicate check fails
+      }
+    }
 
     dispatch({ type: "UPLOAD_PROGRESS", payload: 0 });
 
@@ -539,7 +686,8 @@ export function ComplaintForm() {
         photoURL: photoURL ?? null,
         timestamp: serverTimestamp(),
         status: "open",
-        priority: "low",
+        priority: calculatePriority(description),
+        department: getDepartmentForCategory(category),
         schemaVersion: 2,
         token,
       });
@@ -644,30 +792,13 @@ export function ComplaintForm() {
           </label>
 
           {locationEditable ? (
-            <input
-              id="location-input"
-              type="text"
-              value={locationText}
-              onChange={(e) => setLocationText(e.target.value)}
-              disabled={isSubmitting}
-              aria-describedby={fieldErrors.location ? "location-error" : undefined}
-              aria-invalid={!!fieldErrors.location}
-              placeholder="e.g. 12, Gandhi Road, Tirupati"
-              className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50"
-              style={{
-                border: fieldErrors.location
-                  ? "1px solid #dc2626"
-                  : "1px solid var(--border)",
-              }}
-              onFocus={(e) => {
-                e.currentTarget.style.borderColor = "var(--primary)";
-                e.currentTarget.style.boxShadow = "0 0 0 3px rgba(27,79,216,0.12)";
-              }}
-              onBlur={(e) => {
-                e.currentTarget.style.borderColor = fieldErrors.location ? "#dc2626" : "var(--border)";
-                e.currentTarget.style.boxShadow = "none";
-              }}
-            />
+            <div id="location-input" aria-describedby={fieldErrors.location ? "location-error" : undefined}>
+              <StructuredLocationInput 
+                onChange={setLocationText} 
+                disabled={isSubmitting} 
+                error={fieldErrors.location}
+              />
+            </div>
           ) : (
             <div
               id="location-input"
@@ -729,7 +860,8 @@ export function ComplaintForm() {
               Describe the issue
             </label>
 
-            {speechSupported && (
+            {/* Disabled per user request until we enhance the feature */}
+            {false && speechSupported && (
               <button
                 type="button"
                 onClick={toggleListening}

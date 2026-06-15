@@ -12,8 +12,8 @@ service cloud.firestore {
         'category', 'location', 'description', 'timestamp', 'status', 'priority'
       ]) && 
       request.resource.data.category in [
-        'Streetlight', 'Water', 'Garbage', 'Roads', 'Drainage',
-        'Electricity', 'Encroachment', 'Public Toilet', 'Park/Garden', 'Other'
+        'streetlight', 'water', 'garbage', 'roads', 'drainage',
+        'electricity', 'encroachment', 'publictoilet', 'park', 'other'
       ] &&
       request.resource.data.status == 'open' &&
       request.resource.data.priority in ['low', 'medium', 'high'] &&
