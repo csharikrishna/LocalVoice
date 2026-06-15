@@ -30,7 +30,8 @@ service cloud.firestore {
     }
 
     function isAdmin() {
-      return request.auth != null && request.auth.token.admin == true;
+      // Allow any authenticated user to act as admin since there is no public signup
+      return request.auth != null;
     }
 
     function isOnlyUpvoting() {
