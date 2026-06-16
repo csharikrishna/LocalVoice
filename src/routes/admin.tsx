@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useCallback, useRef, memo } from "react";
 import { collection, query, orderBy, updateDoc, doc, getDocs } from "firebase/firestore";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
+import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
@@ -60,7 +60,6 @@ function AdminRouteWrapper() {
 
     const initializeAuth = async () => {
       try {
-        const { isSignInWithEmailLink, signInWithEmailLink } = await import("firebase/auth");
         if (isSignInWithEmailLink(auth, window.location.href)) {
           const email = window.localStorage.getItem("emailForSignIn") || import.meta.env.VITE_ADMIN_EMAIL;
           if (email) {
@@ -150,7 +149,6 @@ function AdminLogin() {
     }
 
     try {
-      const { sendSignInLinkToEmail } = await import("firebase/auth");
       const actionCodeSettings = {
         url: window.location.origin + "/admin",
         handleCodeInApp: true,

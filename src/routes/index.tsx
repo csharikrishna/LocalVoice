@@ -7,6 +7,7 @@ import {
 import { PulseMap } from "@/components/civic/PulseMap";
 import { Reveal } from "@/components/civic/Reveal";
 import { ComplaintForm } from "@/components/civic/ComplaintForm";
+import { useTranslation } from "react-i18next";
 
 export const Route = createFileRoute("/")({
   head: () => ({
@@ -38,6 +39,8 @@ function Home() {
 
 /* ---------------- HERO ---------------- */
 function Hero() {
+  const { t } = useTranslation();
+
   return (
     <section className="relative pt-28 lg:pt-32 pb-16 lg:pb-24 overflow-hidden">
       <div
@@ -68,19 +71,14 @@ function Hero() {
             className="mt-6 font-extrabold leading-[1.05] text-5xl md:text-6xl lg:text-[72px]"
             style={{ letterSpacing: "-0.04em" }}
           >
-            <Reveal delay={120}><span className="block">Smarter</span></Reveal>
-            <Reveal delay={200}><span className="block">communities</span></Reveal>
-            <Reveal delay={280}>
-              <span className="block" style={{ color: "var(--primary)" }}>
-                start with a scan.
-              </span>
+            <Reveal delay={120}>
+              <span className="block" dangerouslySetInnerHTML={{ __html: t("home.title", "Smarter <br/> communities <br/> <span style='color: var(--primary)'>start with a scan.</span>") }} />
             </Reveal>
           </h1>
 
           <Reveal delay={380}>
             <p className="mt-7 text-lg lg:text-xl text-[color:var(--text-secondary)] max-w-[560px] leading-[1.55]">
-              LocalVoice turns every public asset into a reporting channel. Scan the QR,
-              describe the problem, and it lands with the right authority — in under 60 seconds.
+              {t("home.subtitle", "LocalVoice turns every public asset into a reporting channel. Scan the QR, describe the problem, and it lands with the right authority — in under 60 seconds.")}
             </p>
           </Reveal>
 
@@ -91,7 +89,7 @@ function Hero() {
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[10px] font-semibold text-base text-white bg-[color:var(--primary)] hover:bg-[color:var(--primary-dark)] transition-all hover:-translate-y-px"
                 style={{ boxShadow: "0 10px 30px rgba(27,79,216,0.32)" }}
               >
-                <QrCode size={18} /> Try the report form
+                <QrCode size={18} /> {t("home.reportBtn", "Try the report form")}
               </a>
               <Link
                 to="/research"

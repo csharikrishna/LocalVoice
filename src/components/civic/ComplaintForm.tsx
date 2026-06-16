@@ -76,9 +76,13 @@ import {
   ImageUploadError,
   IMAGE_CONFIG,
 } from "@/lib/image-upload";
+import { checkRateLimit, recordReportSubmission } from "@/lib/rate-limit";
+import ReCAPTCHA from "react-google-recaptcha";
+import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
+import { useGeolocation, reverseGeocode } from "@/hooks/useGeolocation";
 
 // Fix leaflet default icon (webpack asset hashing strips the built-in URL detector)
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -95,8 +99,6 @@ L.Icon.Default.mergeOptions({
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DESCRIPTION_MAX = 300;
-const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
-const NOMINATIM_HEADERS = { "Accept-Language": "en" };
 
 const CATEGORIES = [
   { id: "streetlight",    label: "Streetlight" },
@@ -196,47 +198,10 @@ function generateToken(): string {
   return `CVC-${hex}`;
 }
 
-/** Reverse-geocode lat/lng → human address string */
-async function reverseGeocode(lat: number, lng: number, signal?: AbortSignal): Promise<string> {
-  const url = new URL(GEOCODE_URL);
-  url.searchParams.set("lat", String(lat));
-  url.searchParams.set("lon", String(lng));
-  url.searchParams.set("format", "json");
-  url.searchParams.set("addressdetails", "1");
-
-  const res = await fetch(url.toString(), { headers: NOMINATIM_HEADERS, signal });
-  if (!res.ok) throw new Error("Geocode request failed");
-
-  const data = await res.json();
-  const addr = data.address ?? {};
-  const parts: string[] = (data.display_name ?? "").split(",").map((p: string) => p.trim());
-
-  // Strip broad regions (state, country) — keep street-level detail
-  const ignore = new Set([addr.state, addr.country, addr.country_code].filter(Boolean));
-  const local = parts.filter((p) => !ignore.has(p));
-  return (local.length > 0 ? local : parts).join(", ");
-}
 
 /** Sanitise description: trim + collapse internal whitespace */
 function sanitise(text: string): string {
   return text.trim().replace(/\s+/g, " ");
-}
-
-const RATE_LIMIT_KEY = "civicscan_submissions";
-const MAX_SUBMISSIONS_PER_HOUR = 3;
-
-function checkRateLimit(): boolean {
-  try {
-    const now = Date.now();
-    const history = JSON.parse(localStorage.getItem(RATE_LIMIT_KEY) || "[]");
-    const lastHour = history.filter((ts: number) => now - ts < 3600000);
-    if (lastHour.length >= MAX_SUBMISSIONS_PER_HOUR) return false;
-    lastHour.push(now);
-    localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(lastHour));
-    return true;
-  } catch {
-    return true;
-  }
 }
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
@@ -341,6 +306,7 @@ function StructuredLocationInput({
   return (
     <div className="flex flex-col gap-3">
       <input 
+        id="street" name="street" aria-label="Street or Area Name"
         type="text" placeholder="Street / Area Name *" required 
         value={street} onChange={e => setStreet(e.target.value)}
         disabled={disabled}
@@ -349,12 +315,14 @@ function StructuredLocationInput({
       />
       <div className="flex gap-3">
         <input 
+          id="landmark" name="landmark" aria-label="Landmark (optional)"
           type="text" placeholder="Landmark (optional)" 
           value={landmark} onChange={e => setLandmark(e.target.value)}
           disabled={disabled}
           className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50 border border-[color:var(--border)] focus:border-[color:var(--primary)]"
         />
         <input 
+          id="pincode" name="pincode" aria-label="Pincode"
           type="text" placeholder="Pincode" 
           value={pincode} onChange={e => setPincode(e.target.value)}
           disabled={disabled}
@@ -368,6 +336,7 @@ function StructuredLocationInput({
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function ComplaintForm() {
+  const { t } = useTranslation();
   // ── Field state ─────────────────────────────────────────────────────────────
   const [category, setCategory] = useState<CategoryId>("streetlight");
   const [locationText, setLocationText] = useState("");
@@ -379,6 +348,13 @@ export function ComplaintForm() {
   const [dragActive, setDragActive] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
+  
+  const [captchaValue, setCaptchaValue] = useState<string | null>(null);
+  const [rateLimitState, setRateLimitState] = useState({ allowed: true, remaining: 3 });
+
+  useEffect(() => {
+    setRateLimitState(checkRateLimit());
+  }, []);
 
   // ── Submit machine ───────────────────────────────────────────────────────────
   const [formState, dispatch] = useReducer(formReducer, INITIAL_STATE);
@@ -402,49 +378,18 @@ export function ComplaintForm() {
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
   const descRef = useRef<HTMLTextAreaElement>(null);
-  const geoAbortRef = useRef<AbortController | null>(null);
-
-  // ─── Geolocation ────────────────────────────────────────────────────────────
-  const [isDetectingLocation, setIsDetectingLocation] = useState(false);
-
-  const requestLocation = useCallback(() => {
-    if (!navigator.geolocation) {
-      setFieldErrors(prev => ({ ...prev, location: "Location is not supported by your browser." }));
-      return;
+  // ─── Geolocation Hook ───────────────────────────────────────────────────────
+  const { detectLocation, cancel, isDetecting, accuracy } = useGeolocation({
+    onSuccess: (newCoords, address, acc) => {
+      setLocationText(address);
+      setCoords(newCoords);
+      setLocationDetected(true);
+      setLocationEditable(false);
+    },
+    onError: (message) => {
+      setFieldErrors(prev => ({ ...prev, location: message }));
     }
-
-    setIsDetectingLocation(true);
-    setFieldErrors(prev => ({ ...prev, location: undefined }));
-
-    const controller = new AbortController();
-    geoAbortRef.current = controller;
-
-    navigator.geolocation.getCurrentPosition(
-      async ({ coords: { latitude, longitude } }) => {
-        try {
-          const address = await reverseGeocode(latitude, longitude, controller.signal);
-          setLocationText(address);
-          setCoords({ lat: latitude, lng: longitude });
-          setLocationDetected(true);
-          setLocationEditable(false);
-        } catch {
-          if (!controller.signal.aborted) {
-            setLocationText(`${latitude.toFixed(5)}, ${longitude.toFixed(5)}`);
-            setCoords({ lat: latitude, lng: longitude });
-            setLocationDetected(true);
-            setLocationEditable(false);
-          }
-        } finally {
-          setIsDetectingLocation(false);
-        }
-      },
-      (error) => {
-        setIsDetectingLocation(false);
-        setFieldErrors(prev => ({ ...prev, location: "Location access denied. Please enter manually." }));
-      },
-      { enableHighAccuracy: true, timeout: 15_000, maximumAge: 0 }
-    );
-  }, []);
+  });
 
   // ─── Speech recognition setup ────────────────────────────────────────────────
   useEffect(() => {
@@ -633,9 +578,16 @@ export function ComplaintForm() {
     if (isSubmitting) return;
     if (!validate()) return;
 
-    if (!checkRateLimit()) {
-      dispatch({ type: "ERROR", message: "You have reached the maximum number of submissions. Please try again later." });
+    if (!captchaValue) {
+      dispatch({ type: "ERROR", message: "Please verify that you are human using the CAPTCHA." });
       setTimeout(() => dispatch({ type: "RESET" }), 5000);
+      return;
+    }
+
+    const { allowed } = checkRateLimit();
+    if (!allowed) {
+      dispatch({ type: "ERROR", message: "You have reached the limit of 3 reports per day. Please try again tomorrow." });
+      setRateLimitState({ allowed: false, remaining: 0 });
       return;
     }
 
@@ -697,6 +649,8 @@ export function ComplaintForm() {
         token,
       });
 
+      recordReportSubmission();
+      setRateLimitState(checkRateLimit());
       dispatch({ type: "SUCCESS", token });
     } catch (err) {
       console.error("[ComplaintForm] Submit error:", err);
@@ -760,7 +714,7 @@ export function ComplaintForm() {
         {/* ── Category ────────────────────────────────────────────────────── */}
         <fieldset className="mb-6 border-0 p-0 m-0">
           <legend className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
-            Issue category
+            {t("form.category", "Issue category")}
           </legend>
           <div className="flex flex-wrap gap-2">
             {CATEGORIES.map(({ id, label }) => {
@@ -780,7 +734,7 @@ export function ComplaintForm() {
                     boxShadow: active ? "0 2px 8px rgba(27,79,216,0.20)" : "none",
                   }}
                 >
-                  {label}
+                  {t(`categories.${id}`, label)}
                 </button>
               );
             })}
@@ -788,34 +742,46 @@ export function ComplaintForm() {
         </fieldset>
 
         {/* ── Location ────────────────────────────────────────────────────── */}
-        <div className="mb-6">
-          <label
-            htmlFor="location-input"
-            className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2"
-          >
+        <fieldset className="mb-6 border-0 p-0 m-0">
+          <legend className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
             Location
-          </label>
+          </legend>
 
           {locationEditable ? (
             <div className="flex flex-col gap-4" id="location-input" aria-describedby={fieldErrors.location ? "location-error" : undefined}>
-              <button
-                type="button"
-                onClick={requestLocation}
-                disabled={isSubmitting || isDetectingLocation}
-                className="flex items-center justify-center gap-2 w-full py-3 rounded-[10px] text-sm font-semibold transition-all border border-[color:var(--primary)] text-[color:var(--primary)] hover:bg-blue-50 disabled:opacity-50"
-              >
-                {isDetectingLocation ? (
-                  <>
-                    <Loader2 size={16} className="animate-spin" />
-                    Detecting Location...
-                  </>
-                ) : (
-                  <>
-                    <MapPin size={16} />
-                    Check for Auto-Location
-                  </>
+              <div className="flex gap-2 w-full">
+                <button
+                  type="button"
+                  onClick={detectLocation}
+                  disabled={isSubmitting || isDetecting}
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-[10px] text-sm font-semibold transition-all border border-[color:var(--primary)] text-[color:var(--primary)] hover:bg-blue-50 disabled:opacity-50"
+                >
+                  {isDetecting ? (
+                    <>
+                      <Loader2 size={16} className="animate-spin" />
+                      {accuracy !== null
+                        ? `Refining GPS... (~${accuracy}m)`
+                        : "Detecting Location..."}
+                    </>
+                  ) : (
+                    <>
+                      <MapPin size={16} />
+                      Check for Auto-Location
+                    </>
+                  )}
+                </button>
+                
+                {isDetecting && (
+                  <button
+                    type="button"
+                    onClick={cancel}
+                    className="flex items-center justify-center px-4 rounded-[10px] text-sm font-semibold transition-all border border-red-500 text-red-500 hover:bg-red-50"
+                    aria-label="Cancel location detection"
+                  >
+                    <X size={20} />
+                  </button>
                 )}
-              </button>
+              </div>
               
               <div className="flex items-center gap-3">
                 <hr className="flex-1 border-[color:var(--border)]" />
@@ -856,7 +822,18 @@ export function ComplaintForm() {
           <FieldError id="location-error" message={fieldErrors.location} />
 
           {locationDetected && !isSubmitting && (
-            <div className="mt-2 flex items-center gap-3 text-xs">
+            <div className="mt-2 flex items-center gap-3 text-xs flex-wrap">
+              {accuracy !== null && (
+                <span
+                  className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
+                  style={{
+                    background: accuracy <= 30 ? '#dcfce7' : accuracy <= 100 ? '#fef3c7' : '#fee2e2',
+                    color: accuracy <= 30 ? '#166534' : accuracy <= 100 ? '#92400e' : '#991b1b',
+                  }}
+                >
+                  📍 ±{accuracy}m {accuracy <= 30 ? 'GPS' : accuracy <= 100 ? 'Good' : 'Approximate'}
+                </span>
+              )}
               <button
                 type="button"
                 onClick={() => setLocationEditable((v) => !v)}
@@ -878,7 +855,7 @@ export function ComplaintForm() {
               </button>
             </div>
           )}
-        </div>
+        </fieldset>
 
         {/* ── Description ─────────────────────────────────────────────────── */}
         <div className="mb-6">
@@ -1102,21 +1079,43 @@ export function ComplaintForm() {
             </button>
           </div>
         ) : (
-          <button
-            type="submit"
-            disabled={isSubmitting}
-            aria-busy={isSubmitting}
-            className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-[10px] font-semibold text-white transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
-            style={{
-              background: formState.phase === "error" ? "#dc2626" : "var(--primary)",
-              boxShadow: !isSubmitting ? "0 4px 16px rgba(27,79,216,0.25)" : "none",
-            }}
-          >
-            {isSubmitting
-              ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}</>
-              : submitLabel
-            }
-          </button>
+          <div className="flex flex-col gap-4">
+            {!rateLimitState.allowed && (
+              <div className="p-4 rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-red-700 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-700">
+                  <p className="font-bold">Daily Limit Reached</p>
+                  <p className="mt-1">You have submitted the maximum of 3 reports for today. Thank you for your civic engagement! Please come back tomorrow to submit more.</p>
+                </div>
+              </div>
+            )}
+            
+            {rateLimitState.allowed && (
+              <div className="flex justify-center mb-2">
+                <ReCAPTCHA
+                  sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
+                  onChange={(val) => setCaptchaValue(val)}
+                  theme="light"
+                />
+              </div>
+            )}
+            
+            <button
+              type="submit"
+              disabled={isSubmitting || !rateLimitState.allowed}
+              aria-busy={isSubmitting}
+              className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-[10px] font-semibold text-white transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
+              style={{
+                background: formState.phase === "error" || !rateLimitState.allowed ? "#dc2626" : "var(--primary)",
+                boxShadow: (!isSubmitting && rateLimitState.allowed) ? "0 4px 16px rgba(27,79,216,0.25)" : "none",
+              }}
+            >
+              {isSubmitting
+                ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}</>
+                : submitLabel
+              }
+            </button>
+          </div>
         )}
       </form>
 

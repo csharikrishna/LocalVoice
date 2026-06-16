@@ -1,19 +1,21 @@
 import { useEffect, useState } from "react";
 import { Link } from "@tanstack/react-router";
-import { Menu, X, Printer } from "lucide-react";
-
-const links = [
-  { label: "Home", to: "/" as const },
-  { label: "Impact", to: "/impact" as const },
-  { label: "Research", to: "/research" as const },
-  { label: "Tech", to: "/tech" as const },
-  { label: "Track Report", to: "/track" as const },
-  { label: "Live Map", to: "/map" as const },
-];
+import { Menu, X, Printer, Globe } from "lucide-react";
+import { useTranslation } from "react-i18next";
 
 export function Nav() {
   const [scrolled, setScrolled] = useState(false);
   const [open, setOpen] = useState(false);
+  const { t, i18n } = useTranslation();
+
+  const links = [
+    { label: t("nav.home", "Home"), to: "/" as const },
+    { label: t("nav.impact", "Impact"), to: "/impact" as const },
+    { label: "Research", to: "/research" as const },
+    { label: "Tech", to: "/tech" as const },
+    { label: "Track Report", to: "/track" as const },
+    { label: t("nav.map", "Live Map"), to: "/map" as const },
+  ];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 60);
@@ -21,6 +23,10 @@ export function Nav() {
     window.addEventListener("scroll", onScroll, { passive: true });
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  const toggleLanguage = () => {
+    i18n.changeLanguage(i18n.language === "en" ? "te" : "en");
+  };
 
   return (
     <nav
@@ -56,6 +62,14 @@ export function Nav() {
         </ul>
 
         <div className="flex items-center gap-3">
+          <button
+            onClick={toggleLanguage}
+            className="flex items-center gap-1.5 text-sm font-semibold text-[color:var(--text-secondary)] hover:text-[color:var(--primary)] px-3 py-2 rounded-[10px] transition-colors"
+            title="Switch Language"
+          >
+            <Globe size={18} />
+            <span className="hidden sm:inline">{i18n.language === "en" ? "English" : "తెలుగు"}</span>
+          </button>
           <Link
             to="/print-qr"
             className="hidden sm:inline-flex items-center gap-2 text-sm font-semibold text-[color:var(--primary)] bg-[color:var(--primary-tint)] border border-[color:var(--primary)] hover:bg-white px-4 py-2 rounded-[10px] transition-all hover:-translate-y-px"
@@ -69,7 +83,7 @@ export function Nav() {
             className="hidden sm:inline-flex items-center text-sm font-semibold text-white bg-[color:var(--primary)] hover:bg-[color:var(--primary-dark)] px-4 py-2 rounded-[10px] transition-all hover:-translate-y-px"
             style={{ boxShadow: "0 4px 14px rgba(27,79,216,0.25)" }}
           >
-            Report a Problem
+            {t("home.reportBtn", "Report a Problem")}
           </Link>
           <button
             aria-label={open ? "Close menu" : "Open menu"}
@@ -126,7 +140,7 @@ export function Nav() {
               onClick={() => setOpen(false)}
               className="flex items-center justify-center w-full text-base font-bold text-white bg-[color:var(--primary)] py-3.5 rounded-[12px]"
             >
-              Report a Problem
+              {t("home.reportBtn", "Report a Problem")}
             </Link>
             <Link
               to="/print-qr"
