@@ -1,22 +1,19 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useEffect, useState, useMemo, useCallback } from "react";
-import { collection, query, orderBy, updateDoc, doc, onSnapshot } from "firebase/firestore";
+import { useEffect, useState, useMemo, useCallback, useRef, memo } from "react";
+import { collection, query, orderBy, updateDoc, doc, getDocs } from "firebase/firestore";
 import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Image as ImageIcon, Search, Filter, X, AlertCircle, Wrench, CheckCircle2, BarChart3 } from "lucide-react";
-import * as XLSX from "xlsx";
+import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Search, Filter, X, AlertCircle, Wrench, CheckCircle2, BarChart3, RefreshCw } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
   getCoreRowModel,
   getSortedRowModel,
-  getFilteredRowModel,
   getPaginationRowModel,
   SortingState,
-  ColumnFiltersState,
   useReactTable,
 } from "@tanstack/react-table";
 
@@ -49,6 +46,10 @@ interface Complaint {
   department?: string;
 }
 
+// ============================================================
+// Auth Wrapper
+// ============================================================
+
 function AdminRouteWrapper() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
@@ -60,7 +61,6 @@ function AdminRouteWrapper() {
     const initializeAuth = async () => {
       try {
         const { isSignInWithEmailLink, signInWithEmailLink } = await import("firebase/auth");
-        // Intercept Magic Link returning from Email
         if (isSignInWithEmailLink(auth, window.location.href)) {
           const email = window.localStorage.getItem("emailForSignIn") || import.meta.env.VITE_ADMIN_EMAIL;
           if (email) {
@@ -110,6 +110,10 @@ function AdminRouteWrapper() {
 
   return <AdminDashboard />;
 }
+
+// ============================================================
+// Login Component
+// ============================================================
 
 function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -241,9 +245,13 @@ function AdminLogin() {
   );
 }
 
-const columnHelper = createColumnHelper<Complaint>();
+// ============================================================
+// Isolated Map Component (memo prevents re-render on table updates)
+// ============================================================
 
-function MapFlyTo({ center, popupId }: { center: [number, number] | null, popupId?: string | null }) {
+const DEFAULT_CENTER: [number, number] = [20.5937, 78.9629];
+
+function MapFlyTo({ center }: { center: [number, number] | null }) {
   const map = useMap();
   useEffect(() => {
     if (center) {
@@ -253,74 +261,247 @@ function MapFlyTo({ center, popupId }: { center: [number, number] | null, popupI
   return null;
 }
 
+interface AdminMapProps {
+  complaints: Complaint[];
+  focusedLocation: [number, number] | null;
+  onImageClick: (url: string) => void;
+}
+
+const AdminMap = memo(function AdminMap({ complaints, focusedLocation, onImageClick }: AdminMapProps) {
+  const complaintsWithCoords = complaints.filter(c => c.coordinates);
+  const center = focusedLocation || (complaintsWithCoords.length > 0
+    ? [complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [number, number]
+    : DEFAULT_CENTER);
+
+  return (
+    <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="w-full h-full absolute inset-0 z-0">
+      <MapFlyTo center={focusedLocation} />
+      <TileLayer
+        attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+      />
+      {complaintsWithCoords.map((c) => (
+        <Marker
+          key={c.id}
+          position={[c.coordinates!.lat, c.coordinates!.lng]}
+        >
+          <Popup className="rounded-lg">
+            <div className="p-1 min-w-[200px]">
+              <div className="flex justify-between items-center mb-2">
+                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
+                  {c.category}
+                </span>
+                <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.token || "N/A"}</span>
+              </div>
+              <h3 className="font-semibold text-sm mb-1">{c.location}</h3>
+              <p className="text-xs text-gray-600 mb-2 line-clamp-2">{c.description}</p>
+              {c.photoURL && (
+                <button onClick={() => onImageClick(c.photoURL!)} className="w-full h-24 mt-2 block p-0 border-0 bg-transparent cursor-zoom-in">
+                   <img src={c.photoURL} alt="Issue" className="w-full h-full object-cover rounded border border-gray-100" />
+                </button>
+              )}
+            </div>
+          </Popup>
+        </Marker>
+      ))}
+    </MapContainer>
+  );
+});
+
+// ============================================================
+// Inline Status/Department Select (uncontrolled to avoid re-render issues)
+// ============================================================
+
+function StatusSelect({ id, currentValue, onChange }: { id: string; currentValue: string; onChange: (id: string, val: string) => void }) {
+  const selectRef = useRef<HTMLSelectElement>(null);
+  
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    onChange(id, e.target.value);
+  }, [id, onChange]);
+
+  const val = currentValue || "open";
+  const color = val === "open" ? "#dc2626" : val === "working" ? "#d97706" : "#16a34a";
+  const bg = val === "open" ? "#fef2f2" : val === "working" ? "#fffbeb" : "#f0fdf4";
+
+  return (
+    <select
+      ref={selectRef}
+      defaultValue={val}
+      key={`${id}-${val}`}
+      onChange={handleChange}
+      onClick={(e) => e.stopPropagation()}
+      className="text-xs font-bold border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
+      style={{
+        color,
+        backgroundColor: bg,
+        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+        backgroundPosition: "right 0.25rem center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "1.25em 1.25em",
+      }}
+    >
+      <option value="open">Open</option>
+      <option value="working">In Progress</option>
+      <option value="closed">Closed</option>
+    </select>
+  );
+}
+
+function DepartmentSelect({ id, currentValue, onChange }: { id: string; currentValue: string; onChange: (id: string, val: string) => void }) {
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    onChange(id, e.target.value);
+  }, [id, onChange]);
+
+  const val = currentValue || "";
+
+  return (
+    <select
+      defaultValue={val}
+      key={`${id}-${val}`}
+      onChange={handleChange}
+      onClick={(e) => e.stopPropagation()}
+      className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
+      style={{
+        backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
+        backgroundPosition: "right 0.25rem center",
+        backgroundRepeat: "no-repeat",
+        backgroundSize: "1.25em 1.25em",
+      }}
+    >
+      <option value="">Unassigned</option>
+      <option value="Sanitation">Sanitation</option>
+      <option value="Electrical">Electrical</option>
+      <option value="Water Board">Water Board</option>
+      <option value="Public Works">Public Works</option>
+      <option value="Parks">Parks &amp; Rec</option>
+    </select>
+  );
+}
+
+// ============================================================
+// Admin Dashboard
+// ============================================================
+
+const columnHelper = createColumnHelper<Complaint>();
+
 function AdminDashboard() {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
-  const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
+  const [searchInput, setSearchInput] = useState("");
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
   const [lightboxImage, setLightboxImage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
 
-  // Real-time Firestore listener
-  useEffect(() => {
-    const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const data = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Complaint));
+  // ── Fetch data (no real-time listener to avoid re-render storms) ──
+  const fetchComplaints = useCallback(async (showRefresh = false) => {
+    if (showRefresh) setRefreshing(true);
+    try {
+      const q = query(collection(db, "complaints"), orderBy("timestamp", "desc"));
+      const snapshot = await getDocs(q);
+      const data = snapshot.docs.map(d => ({ id: d.id, ...d.data() } as Complaint));
       setComplaints(data);
+    } catch (error) {
+      console.error("Error fetching complaints:", error);
+      setToast({ message: "Failed to load complaints", type: "error" });
+    } finally {
       setLoading(false);
-    }, (error) => {
-      console.error("Error listening to complaints:", error);
-      setLoading(false);
-    });
-    return () => unsubscribe();
+      setRefreshing(false);
+    }
   }, []);
 
-  // Derived filtered data
-  const filteredComplaints = complaints.filter(c => {
-    if (statusFilter !== "all" && c.status !== statusFilter) return false;
-    if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
-    if (globalFilter) {
-      const search = globalFilter.toLowerCase();
-      return (
-        (c.token || "").toLowerCase().includes(search) ||
-        c.description.toLowerCase().includes(search) ||
-        c.location.toLowerCase().includes(search) ||
-        c.category.toLowerCase().includes(search)
-      );
-    }
-    return true;
-  });
+  useEffect(() => {
+    fetchComplaints();
+  }, [fetchComplaints]);
 
-  // Analytics
-  const stats = {
+  // ── Debounced search ──
+  const handleSearchChange = useCallback((value: string) => {
+    setSearchInput(value);
+    if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = setTimeout(() => {
+      setGlobalFilter(value);
+    }, 300);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
+    };
+  }, []);
+
+  // ── Toast auto-dismiss ──
+  useEffect(() => {
+    if (!toast) return;
+    const timer = setTimeout(() => setToast(null), 3000);
+    return () => clearTimeout(timer);
+  }, [toast]);
+
+  // ── Memoised derived data ──
+  const filteredComplaints = useMemo(() => {
+    return complaints.filter(c => {
+      if (statusFilter !== "all" && c.status !== statusFilter) return false;
+      if (categoryFilter !== "all" && c.category !== categoryFilter) return false;
+      if (globalFilter) {
+        const search = globalFilter.toLowerCase();
+        return (
+          (c.token || "").toLowerCase().includes(search) ||
+          c.description.toLowerCase().includes(search) ||
+          c.location.toLowerCase().includes(search) ||
+          c.category.toLowerCase().includes(search)
+        );
+      }
+      return true;
+    });
+  }, [complaints, statusFilter, categoryFilter, globalFilter]);
+
+  const stats = useMemo(() => ({
     total: complaints.length,
     open: complaints.filter(c => c.status === "open").length,
     working: complaints.filter(c => c.status === "working").length,
     closed: complaints.filter(c => c.status === "closed").length,
-  };
+  }), [complaints]);
 
-  const uniqueCategories = [...new Set(complaints.map(c => c.category))].sort();
+  const uniqueCategories = useMemo(
+    () => [...new Set(complaints.map(c => c.category))].sort(),
+    [complaints]
+  );
 
+  // ── Handlers (update local state immediately, then Firestore) ──
   const handleStatusChange = useCallback(async (id: string, newStatus: string) => {
+    // Optimistic local update
+    setComplaints(prev => prev.map(c => c.id === id ? { ...c, status: newStatus } : c));
     try {
       await updateDoc(doc(db, "complaints", id), { status: newStatus });
+      setToast({ message: `Status updated to "${newStatus === "open" ? "Open" : newStatus === "working" ? "In Progress" : "Closed"}"`, type: "success" });
     } catch (err) {
       console.error("Failed to update status", err);
+      setToast({ message: "Failed to update status. Please try again.", type: "error" });
+      // Revert on failure
+      fetchComplaints();
     }
-  }, []);
+  }, [fetchComplaints]);
 
   const handleDepartmentChange = useCallback(async (id: string, newDepartment: string) => {
+    setComplaints(prev => prev.map(c => c.id === id ? { ...c, department: newDepartment } : c));
     try {
       await updateDoc(doc(db, "complaints", id), { department: newDepartment });
+      setToast({ message: `Department updated to "${newDepartment || "Unassigned"}"`, type: "success" });
     } catch (err) {
       console.error("Failed to update department", err);
+      setToast({ message: "Failed to update department. Please try again.", type: "error" });
+      fetchComplaints();
     }
-  }, []);
+  }, [fetchComplaints]);
 
-  const exportToExcel = () => {
+  const handleExport = useCallback(async () => {
+    const XLSX = await import("xlsx");
     const exportData = filteredComplaints.map(c => ({
       Token: c.token || "N/A",
       Category: c.category,
@@ -333,13 +514,17 @@ function AdminDashboard() {
       Date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "",
       Photo: c.photoURL || "No Photo",
     }));
-
     const worksheet = XLSX.utils.json_to_sheet(exportData);
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
     XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
-  };
+  }, [filteredComplaints]);
 
+  const handleImageClick = useCallback((url: string) => {
+    setLightboxImage(url);
+  }, []);
+
+  // ── Table columns ──
   const columns = useMemo(() => [
     columnHelper.accessor("token", {
       header: "Token",
@@ -347,16 +532,17 @@ function AdminDashboard() {
     }),
     columnHelper.accessor("photoURL", {
       header: "Photo",
+      enableSorting: false,
       cell: info => {
         const url = info.getValue();
         if (!url) return <span className="text-gray-400 text-xs italic">None</span>;
         return (
-          <button 
+          <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); setLightboxImage(url); }} 
+            onClick={(e) => { e.stopPropagation(); handleImageClick(url); }}
             className="block w-10 h-10 rounded overflow-hidden border border-gray-200 cursor-pointer"
           >
-            <img src={url} alt="Complaint" className="w-full h-full object-cover hover:scale-110 transition-transform" />
+            <img src={url} alt="Complaint" className="w-full h-full object-cover hover:scale-110 transition-transform" loading="lazy" />
           </button>
         );
       },
@@ -372,48 +558,21 @@ function AdminDashboard() {
     columnHelper.accessor("status", {
       header: "Status",
       cell: info => (
-        <select 
-          value={info.getValue() || "open"}
-          onChange={(e) => handleStatusChange(info.row.original.id, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          className="text-xs font-bold border border-gray-200 rounded-md px-2.5 py-1.5 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
-          style={{
-            color: info.getValue() === "open" ? "#dc2626" : info.getValue() === "working" ? "#d97706" : "#16a34a",
-            backgroundColor: info.getValue() === "open" ? "#fef2f2" : info.getValue() === "working" ? "#fffbeb" : "#f0fdf4",
-            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-            backgroundPosition: "right 0.25rem center",
-            backgroundRepeat: "no-repeat",
-            backgroundSize: "1.25em 1.25em",
-          }}
-        >
-          <option value="open">Open</option>
-          <option value="working">In Progress</option>
-          <option value="closed">Closed</option>
-        </select>
+        <StatusSelect
+          id={info.row.original.id}
+          currentValue={info.getValue()}
+          onChange={handleStatusChange}
+        />
       ),
     }),
     columnHelper.accessor("department", {
       header: "Department",
       cell: info => (
-        <select 
-          value={info.getValue() || ""}
-          onChange={(e) => handleDepartmentChange(info.row.original.id, e.target.value)}
-          onClick={(e) => e.stopPropagation()}
-          className="text-xs font-semibold text-gray-700 border border-gray-200 rounded-md px-2.5 py-1.5 bg-gray-50 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500/50 cursor-pointer transition-all shadow-sm appearance-none pr-8"
-          style={{
-            backgroundImage: `url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e")`,
-            backgroundPosition: "right 0.25rem center",
-            backgroundRepeat: "no-repeat",
-            backgroundSize: "1.25em 1.25em",
-          }}
-        >
-          <option value="">Unassigned</option>
-          <option value="Sanitation">Sanitation</option>
-          <option value="Electrical">Electrical</option>
-          <option value="Water Board">Water Board</option>
-          <option value="Public Works">Public Works</option>
-          <option value="Parks">Parks & Rec</option>
-        </select>
+        <DepartmentSelect
+          id={info.row.original.id}
+          currentValue={info.getValue() || ""}
+          onChange={handleDepartmentChange}
+        />
       ),
     }),
     columnHelper.accessor("location", {
@@ -436,45 +595,67 @@ function AdminDashboard() {
         return <span className="text-sm text-gray-500 whitespace-nowrap">{ts?.toDate ? new Date(ts.toDate()).toLocaleString() : ''}</span>;
       },
     }),
-  ], [handleStatusChange, handleDepartmentChange]);
+  ], [handleStatusChange, handleDepartmentChange, handleImageClick]);
 
+  // ── React Table instance ──
   const table = useReactTable({
     data: filteredComplaints,
     columns,
-    state: {
-      sorting,
-    },
+    state: { sorting },
     onSortingChange: setSorting,
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
     getPaginationRowModel: getPaginationRowModel(),
+    getRowId: (row) => row.id,  // CRITICAL: stable row identity
     initialState: {
       pagination: { pageSize: 15 },
     },
   });
 
-  const defaultCenter: [number, number] = [20.5937, 78.9629];
-  const complaintsWithCoords = filteredComplaints.filter(c => c.coordinates);
-  const mapCenter = focusedLocation || (complaintsWithCoords.length > 0
-    ? [complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [number, number]
-    : defaultCenter);
+  // ── Map complaints (memoized separately) ──
+  const mapComplaints = useMemo(
+    () => filteredComplaints.filter(c => c.coordinates),
+    [filteredComplaints]
+  );
 
   return (
     <div className="min-h-screen pt-20 px-4 max-w-7xl mx-auto flex flex-col pb-12">
+      {/* Toast notification */}
+      {toast && (
+        <div className={`fixed top-4 right-4 z-[9999] px-4 py-3 rounded-lg shadow-lg border text-sm font-medium flex items-center gap-2 transition-all animate-in fade-in slide-in-from-top-2 duration-300 ${
+          toast.type === "success"
+            ? "bg-green-50 text-green-800 border-green-200"
+            : "bg-red-50 text-red-800 border-red-200"
+        }`}>
+          {toast.type === "success" ? <CheckCircle2 size={16} /> : <AlertCircle size={16} />}
+          {toast.message}
+          <button onClick={() => setToast(null)} className="ml-2 opacity-60 hover:opacity-100">
+            <X size={14} />
+          </button>
+        </div>
+      )}
+
       <div className="mb-6 flex justify-between items-end flex-wrap gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2 text-[color:var(--text-primary)]">Admin Dashboard</h1>
-          <p className="text-[color:var(--text-secondary)]">Real-time civic issue management and analytics.</p>
+          <p className="text-[color:var(--text-secondary)]">Civic issue management and analytics.</p>
         </div>
         <div className="flex items-center gap-3">
-          <button 
-            onClick={async () => { const XLSX = await import("xlsx"); const exportData = filteredComplaints.map(c => ({ Token: c.token || "N/A", Category: c.category, Status: c.status, Location: c.location, Latitude: c.coordinates?.lat || "", Longitude: c.coordinates?.lng || "", Description: c.description, Date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "", Photo: c.photoURL || "No Photo" })); const worksheet = XLSX.utils.json_to_sheet(exportData); const workbook = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints"); XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`); }}
+          <button
+            onClick={() => fetchComplaints(true)}
+            disabled={refreshing}
+            className="flex items-center gap-2 text-sm text-gray-600 bg-white border border-gray-200 px-4 py-2 rounded-lg transition-colors shadow-sm hover:bg-gray-50 disabled:opacity-50"
+          >
+            <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+            {refreshing ? "Refreshing…" : "Refresh"}
+          </button>
+          <button
+            onClick={handleExport}
             className="flex items-center gap-2 text-sm text-white bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition-colors shadow-sm font-medium"
           >
             <Download size={16} /> Export to Excel
           </button>
-          <button 
+          <button
             onClick={() => signOut(auth)}
             className="flex items-center gap-2 text-sm text-gray-600 hover:text-gray-900 bg-white border border-gray-200 px-4 py-2 rounded-lg transition-colors shadow-sm"
           >
@@ -542,15 +723,15 @@ function AdminDashboard() {
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
             type="text"
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={searchInput}
+            onChange={(e) => handleSearchChange(e.target.value)}
             placeholder="Search by token, description, or location…"
             className="w-full pl-9 pr-8 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
             aria-label="Search complaints"
           />
-          {globalFilter && (
+          {searchInput && (
             <button
-              onClick={() => setGlobalFilter("")}
+              onClick={() => { setSearchInput(""); setGlobalFilter(""); }}
               className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
               aria-label="Clear search"
             >
@@ -571,37 +752,11 @@ function AdminDashboard() {
               <Loader2 className="animate-spin text-blue-600" size={32} />
             </div>
           ) : (
-            <MapContainer center={mapCenter} zoom={12} scrollWheelZoom={false} className="w-full h-full absolute inset-0 z-0">
-              <MapFlyTo center={focusedLocation} />
-              <TileLayer
-                attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
-                url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-              />
-              {filteredComplaints.filter(c => c.coordinates).map((c) => (
-                <Marker 
-                  key={c.id} 
-                  position={[c.coordinates!.lat, c.coordinates!.lng]}
-                >
-                  <Popup className="rounded-lg">
-                    <div className="p-1 min-w-[200px]">
-                      <div className="flex justify-between items-center mb-2">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-800">
-                          {c.category}
-                        </span>
-                        <span className="font-mono text-xs bg-gray-100 px-1.5 py-0.5 rounded">{c.token || "N/A"}</span>
-                      </div>
-                      <h3 className="font-semibold text-sm mb-1">{c.location}</h3>
-                      <p className="text-xs text-gray-600 mb-2 line-clamp-2">{c.description}</p>
-                      {c.photoURL && (
-                        <button onClick={() => setLightboxImage(c.photoURL!)} className="w-full h-24 mt-2 block p-0 border-0 bg-transparent cursor-zoom-in">
-                           <img src={c.photoURL} alt="Issue" className="w-full h-full object-cover rounded border border-gray-100" />
-                        </button>
-                      )}
-                    </div>
-                  </Popup>
-                </Marker>
-              ))}
-            </MapContainer>
+            <AdminMap
+              complaints={mapComplaints}
+              focusedLocation={focusedLocation}
+              onImageClick={handleImageClick}
+            />
           )}
         </div>
 
@@ -611,7 +766,7 @@ function AdminDashboard() {
             <h2 className="font-semibold text-gray-800">All Complaints Database</h2>
             <span className="text-sm text-gray-500">{filteredComplaints.length} of {complaints.length} Records</span>
           </div>
-          
+
           <div className="overflow-x-auto">
             {loading ? (
                <div className="p-8 flex justify-center"><Loader2 className="animate-spin text-gray-400" size={24} /></div>
@@ -629,8 +784,8 @@ function AdminDashboard() {
                   {table.getHeaderGroups().map(headerGroup => (
                     <tr key={headerGroup.id} className="border-b border-gray-200 bg-white">
                       {headerGroup.headers.map(header => (
-                        <th 
-                          key={header.id} 
+                        <th
+                          key={header.id}
                           className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors"
                           onClick={header.column.getToggleSortingHandler()}
                         >
@@ -645,11 +800,12 @@ function AdminDashboard() {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-100">
                   {table.getRowModel().rows.map(row => (
-                    <tr 
-                      key={row.id} 
+                    <tr
+                      key={row.id}
                       className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
                       onClick={(e) => {
-                        if ((e.target as HTMLElement).tagName.toLowerCase() === 'select') return;
+                        const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                        if (tag === 'select' || tag === 'option' || tag === 'button' || tag === 'img') return;
                         const coords = row.original.coordinates;
                         if (coords) setFocusedLocation([coords.lat, coords.lng]);
                       }}
@@ -665,7 +821,7 @@ function AdminDashboard() {
               </table>
             )}
           </div>
-          
+
           {/* Pagination Controls */}
           {filteredComplaints.length > 0 && (
             <div className="px-6 py-4 border-t border-gray-100 bg-white flex items-center justify-between">
@@ -698,7 +854,7 @@ function AdminDashboard() {
 
       {/* Lightbox Modal */}
       {lightboxImage && (
-        <div 
+        <div
           role="dialog"
           aria-modal="true"
           aria-label="Enlarged complaint photo"
@@ -707,7 +863,7 @@ function AdminDashboard() {
           onKeyDown={(e) => { if (e.key === 'Escape') setLightboxImage(null); }}
         >
           <div className="relative max-w-5xl w-full max-h-[90vh] flex items-center justify-center">
-            <button 
+            <button
               className="absolute -top-12 right-0 text-white hover:text-gray-300 p-2 text-xl font-bold bg-black/50 rounded-full w-10 h-10 flex items-center justify-center transition-colors"
               onClick={() => setLightboxImage(null)}
               autoFocus
@@ -715,11 +871,11 @@ function AdminDashboard() {
             >
               ✕
             </button>
-            <img 
-              src={lightboxImage} 
-              alt="Enlarged complaint photo" 
+            <img
+              src={lightboxImage}
+              alt="Enlarged complaint photo"
               className="max-w-full max-h-[85vh] object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()} 
+              onClick={(e) => e.stopPropagation()}
             />
           </div>
         </div>
