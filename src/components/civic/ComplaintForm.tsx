@@ -670,7 +670,7 @@ export function ComplaintForm() {
       // Auto-clear error after 5 s so the button recovers
       setTimeout(() => dispatch({ type: "RESET" }), 5000);
     }
-  }, [isSubmitting, validate, selectedFile, category, locationText, coords, description]);
+  }, [isSubmitting, validate, selectedFile, category, locationText, coords, description, captchaValue]);
 
   const handleReset = useCallback(() => {
     dispatch({ type: "RESET" });

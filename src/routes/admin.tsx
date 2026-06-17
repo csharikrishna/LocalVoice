@@ -1,12 +1,13 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState, useMemo, useCallback, useRef, memo } from "react";
-import { collection, query, orderBy, updateDoc, doc, getDocs } from "firebase/firestore";
-import { signInWithEmailAndPassword, onAuthStateChanged, signOut, User, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "firebase/auth";
+import { collection, query, orderBy, updateDoc, doc, getDocs, getDoc, deleteDoc } from "firebase/firestore";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut, User, isSignInWithEmailLink, signInWithEmailLink, sendSignInLinkToEmail } from "firebase/auth";
 import { db, auth } from "@/lib/firebase";
-import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
+import { MapContainer, TileLayer, Marker, Popup, useMap, CircleMarker } from "react-leaflet";
+import { useGeolocation } from "@/hooks/useGeolocation";
 import "leaflet/dist/leaflet.css";
 import L from "leaflet";
-import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Search, Filter, X, AlertCircle, Wrench, CheckCircle2, BarChart3, RefreshCw } from "lucide-react";
+import { Loader2, MapPin, Lock, LogOut, Download, ArrowUpDown, Search, Filter, X, AlertCircle, Wrench, CheckCircle2, BarChart3, RefreshCw, ChevronDown, Check, Navigation, Trash2, Edit3, Save, Flame } from "lucide-react";
 import {
   createColumnHelper,
   flexRender,
@@ -44,6 +45,7 @@ interface Complaint {
   timestamp: any;
   coordinates?: { lat: number; lng: number };
   department?: string;
+  upvotes?: number;
 }
 
 // ============================================================
@@ -52,6 +54,7 @@ interface Complaint {
 
 function AdminRouteWrapper() {
   const [user, setUser] = useState<User | null>(null);
+  const [role, setRole] = useState<"super_admin" | "admin" | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -72,8 +75,35 @@ function AdminRouteWrapper() {
         console.error("Magic link sign-in error:", err);
         setErrorMsg(err.message);
       } finally {
-        unsubscribe = onAuthStateChanged(auth, (currentUser) => {
+        unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
           setUser(currentUser);
+          if (currentUser?.email) {
+            const username = currentUser.email.split('@')[0];
+            const superAdmin = import.meta.env.VITE_ADMIN_USERNAME;
+            const standardAdmin = import.meta.env.VITE_STANDARD_ADMIN_USERNAME;
+            
+            if (username === superAdmin) {
+              setRole("super_admin");
+            } else if (username === standardAdmin) {
+              setRole("admin");
+            } else {
+              // Fallback to Firestore for dynamically added admins if they don't match .env
+              try {
+                const docRef = doc(db, "admins", currentUser.email);
+                const docSnap = await getDoc(docRef);
+                if (docSnap.exists() && docSnap.data().role === "super_admin") {
+                  setRole("super_admin");
+                } else {
+                  setRole("admin");
+                }
+              } catch (err) {
+                console.error("Error fetching role:", err);
+                setRole("admin");
+              }
+            }
+          } else {
+            setRole(null);
+          }
           setLoading(false);
         });
       }
@@ -103,11 +133,11 @@ function AdminRouteWrapper() {
     );
   }
 
-  if (!user) {
+  if (!user || !role) {
     return <AdminLogin />;
   }
 
-  return <AdminDashboard />;
+  return <AdminDashboard role={role} />;
 }
 
 // ============================================================
@@ -131,7 +161,24 @@ function AdminLogin() {
     try {
       await signInWithEmailAndPassword(auth, adminEmail, password);
     } catch (err: any) {
-      setError("Invalid credentials. Please check your username and password.");
+      // If the account doesn't exist, but it matches our .env credentials precisely, auto-create it securely.
+      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found") {
+        if (
+          (username === import.meta.env.VITE_ADMIN_USERNAME && password === import.meta.env.VITE_ADMIN_PASSWORD) ||
+          (username === import.meta.env.VITE_STANDARD_ADMIN_USERNAME && password === import.meta.env.VITE_STANDARD_ADMIN_PASSWORD)
+        ) {
+          try {
+            await createUserWithEmailAndPassword(auth, adminEmail, password);
+            return; // Successful auto-creation and login
+          } catch (createErr: any) {
+            setError("Failed to initialize admin account: " + createErr.message);
+          }
+        } else {
+          setError("Invalid credentials. Please check your username and password.");
+        }
+      } else {
+        setError("Invalid credentials. Please check your username and password.");
+      }
     } finally {
       setLoading(false);
     }
@@ -259,30 +306,65 @@ function MapFlyTo({ center }: { center: [number, number] | null }) {
   return null;
 }
 
+function HeatmapLayer({ points }: { points: [number, number, number][] }) {
+  const map = useMap();
+  useEffect(() => {
+    if (!map || !points || points.length === 0) return;
+    
+    let heatLayer: any;
+    
+    const initHeatmap = async () => {
+      (window as any).L = L;
+      await import("leaflet.heat");
+      heatLayer = (L as any).heatLayer(points, {
+        radius: 25,
+        blur: 15,
+        maxZoom: 17,
+      }).addTo(map);
+    };
+    
+    initHeatmap();
+
+    return () => {
+      if (heatLayer) map.removeLayer(heatLayer);
+    };
+  }, [map, points]);
+  return null;
+}
+
 interface AdminMapProps {
   complaints: Complaint[];
   focusedLocation: [number, number] | null;
   onImageClick: (url: string) => void;
+  showHeatmap: boolean;
+  adminLocation?: [number, number] | null;
+  onLocateMe?: () => void;
+  isLocating?: boolean;
 }
 
-const AdminMap = memo(function AdminMap({ complaints, focusedLocation, onImageClick }: AdminMapProps) {
+const AdminMap = memo(function AdminMap({ complaints, focusedLocation, onImageClick, showHeatmap, adminLocation, onLocateMe, isLocating }: AdminMapProps) {
   const complaintsWithCoords = complaints.filter(c => c.coordinates);
   const center = focusedLocation || (complaintsWithCoords.length > 0
     ? [complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [number, number]
     : DEFAULT_CENTER);
+    
+  const heatPoints = useMemo(() => complaintsWithCoords.map(c => [c.coordinates!.lat, c.coordinates!.lng, 1] as [number, number, number]), [complaintsWithCoords]);
 
   return (
-    <MapContainer center={center} zoom={12} scrollWheelZoom={false} className="w-full h-full absolute inset-0 z-0">
+    <MapContainer center={center} zoom={12} scrollWheelZoom={true} className="w-full h-full absolute inset-0 z-0">
       <MapFlyTo center={focusedLocation} />
       <TileLayer
         attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
         url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
       />
-      {complaintsWithCoords.map((c) => (
-        <Marker
-          key={c.id}
-          position={[c.coordinates!.lat, c.coordinates!.lng]}
-        >
+      {showHeatmap ? (
+        <HeatmapLayer points={heatPoints} />
+      ) : (
+        complaintsWithCoords.map((c) => (
+          <Marker
+            key={c.id}
+            position={[c.coordinates!.lat, c.coordinates!.lng]}
+          >
           <Popup className="rounded-lg">
             <div className="p-1 min-w-[200px]">
               <div className="flex justify-between items-center mb-2">
@@ -301,7 +383,28 @@ const AdminMap = memo(function AdminMap({ complaints, focusedLocation, onImageCl
             </div>
           </Popup>
         </Marker>
-      ))}
+        ))
+      )}
+
+      {adminLocation && (
+        <CircleMarker center={adminLocation} radius={8} pathOptions={{ color: 'white', fillColor: '#3b82f6', fillOpacity: 1, weight: 2 }}>
+          <Popup>Your Location</Popup>
+        </CircleMarker>
+      )}
+
+      {onLocateMe && (
+        <button
+          onClick={(e) => {
+            e.stopPropagation();
+            onLocateMe();
+          }}
+          disabled={isLocating}
+          className="absolute bottom-4 right-4 z-[400] bg-white p-2.5 rounded-xl shadow-md border border-gray-100 text-gray-700 hover:text-blue-600 transition-colors disabled:opacity-50"
+          title="Find my location"
+        >
+          {isLocating ? <Loader2 size={20} className="animate-spin" /> : <MapPin size={20} />}
+        </button>
+      )}
     </MapContainer>
   );
 });
@@ -379,12 +482,84 @@ function DepartmentSelect({ id, currentValue, onChange }: { id: string; currentV
 }
 
 // ============================================================
+// Custom Filter Dropdown
+// ============================================================
+
+function FilterDropdown({ 
+  value, 
+  onChange, 
+  options, 
+  label 
+}: { 
+  value: string; 
+  onChange: (v: string) => void; 
+  options: { value: string; label: string }[];
+  label: string;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const selectedOption = options.find(o => o.value === value) || options[0];
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`flex items-center justify-between min-w-[160px] px-3 py-2 text-sm bg-white border rounded-lg transition-all ${
+          isOpen ? "border-blue-500 ring-2 ring-blue-500/20" : "border-gray-200 hover:border-gray-300"
+        }`}
+        aria-label={label}
+        aria-expanded={isOpen}
+      >
+        <span className="font-medium text-gray-700">{selectedOption.label}</span>
+        <ChevronDown size={14} className={`text-gray-400 transition-transform duration-200 ${isOpen ? "rotate-180" : ""}`} />
+      </button>
+
+      {isOpen && (
+        <div className="absolute z-50 w-full min-w-[160px] mt-1 bg-white border border-gray-100 rounded-lg shadow-xl shadow-blue-900/5 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+          {options.map((option) => {
+            const isSelected = option.value === value;
+            return (
+              <button
+                key={option.value}
+                type="button"
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm transition-colors ${
+                  isSelected ? "bg-blue-50 text-blue-700 font-medium" : "text-gray-700 hover:bg-gray-50"
+                }`}
+                onClick={() => {
+                  onChange(option.value);
+                  setIsOpen(false);
+                }}
+              >
+                <span>{option.label}</span>
+                {isSelected && <Check size={14} className="text-blue-600" />}
+              </button>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================
 // Admin Dashboard
 // ============================================================
 
 const columnHelper = createColumnHelper<Complaint>();
 
-function AdminDashboard() {
+function AdminDashboard({ role }: { role: "super_admin" | "admin" }) {
   const [complaints, setComplaints] = useState<Complaint[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -396,7 +571,21 @@ function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [toast, setToast] = useState<{ message: string; type: "success" | "error" } | null>(null);
+  const [showHeatmap, setShowHeatmap] = useState(false);
   const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+
+  const [adminLocation, setAdminLocation] = useState<[number, number] | null>(null);
+  const { detectLocation, isDetecting } = useGeolocation({
+    onSuccess: (coords) => {
+      setAdminLocation([coords.lat, coords.lng]);
+      setFocusedLocation([coords.lat, coords.lng]);
+    },
+    onError: (msg) => setToast({ message: msg, type: "error" })
+  });
+
+  // Super Admin states
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingDescription, setEditingDescription] = useState<string>("");
 
   // ── Fetch data (no real-time listener to avoid re-render storms) ──
   const fetchComplaints = useCallback(async (showRefresh = false) => {
@@ -498,24 +687,100 @@ function AdminDashboard() {
     }
   }, [fetchComplaints]);
 
+  // ── Super Admin Actions ──
+  const handleEditDescription = useCallback(async (id: string, newDesc: string) => {
+    try {
+      await updateDoc(doc(db, "complaints", id), { description: newDesc });
+      setComplaints(prev => prev.map(c => c.id === id ? { ...c, description: newDesc } : c));
+      setToast({ message: "Description updated", type: "success" });
+      setEditingId(null);
+    } catch (err) {
+      console.error("Failed to update description", err);
+      setToast({ message: "Failed to update description", type: "error" });
+    }
+  }, []);
+
+  const handleDelete = useCallback(async (id: string) => {
+    if (!window.confirm("Are you sure you want to permanently delete this issue?")) return;
+    try {
+      await deleteDoc(doc(db, "complaints", id));
+      setComplaints(prev => prev.filter(c => c.id !== id));
+      setToast({ message: "Issue deleted", type: "success" });
+    } catch (err) {
+      console.error("Failed to delete issue", err);
+      setToast({ message: "Failed to delete issue", type: "error" });
+    }
+  }, []);
+
   const handleExport = useCallback(async () => {
-    const XLSX = await import("xlsx");
-    const exportData = filteredComplaints.map(c => ({
-      Token: c.token || "N/A",
-      Category: c.category,
-      Department: c.department || "Unassigned",
-      Status: c.status,
-      Location: c.location,
-      Latitude: c.coordinates?.lat || "",
-      Longitude: c.coordinates?.lng || "",
-      Description: c.description,
-      Date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "",
-      Photo: c.photoURL || "No Photo",
-    }));
-    const worksheet = XLSX.utils.json_to_sheet(exportData);
-    const workbook = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(workbook, worksheet, "Complaints");
-    XLSX.writeFile(workbook, `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`);
+    try {
+      const ExcelJS = (await import("exceljs")).default;
+      const workbook = new ExcelJS.Workbook();
+      const worksheet = workbook.addWorksheet("Complaints");
+
+      worksheet.columns = [
+        { header: 'Token', key: 'token', width: 15 },
+        { header: 'Category', key: 'category', width: 20 },
+        { header: 'Department', key: 'department', width: 20 },
+        { header: 'Status', key: 'status', width: 15 },
+        { header: 'Location', key: 'location', width: 40 },
+        { header: 'Map Link', key: 'map_link', width: 20 },
+        { header: 'Description', key: 'description', width: 50 },
+        { header: 'Date', key: 'date', width: 25 },
+        { header: 'Upvotes', key: 'upvotes', width: 15 },
+        { header: 'Photo', key: 'photo', width: 30 }
+      ];
+
+      // Bold headers and light gray background
+      worksheet.getRow(1).font = { bold: true };
+      worksheet.getRow(1).fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FFF3F4F6' }
+      };
+
+      filteredComplaints.forEach(c => {
+        const row = worksheet.addRow({
+          token: c.token || "N/A",
+          category: c.category,
+          department: c.department || "Unassigned",
+          status: c.status.toUpperCase(),
+          location: c.location,
+          map_link: c.coordinates ? { text: 'Get Directions', hyperlink: `https://www.google.com/maps/dir/?api=1&destination=${c.coordinates.lat},${c.coordinates.lng}` } : 'N/A',
+          description: c.description,
+          date: c.timestamp?.toDate ? new Date(c.timestamp.toDate()).toLocaleString() : "",
+          upvotes: c.upvotes || 0,
+          photo: c.photoURL ? { formula: `IMAGE("${c.photoURL}")`, result: 'Photo Link' } : 'No Photo'
+        });
+
+        // Color code status column
+        const statusCell = row.getCell('status');
+        if (c.status === 'open') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEE2E2' } }; // red-100
+          statusCell.font = { color: { argb: 'FF991B1B' }, bold: true }; // red-800
+        } else if (c.status === 'working') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFEF3C7' } }; // amber-100
+          statusCell.font = { color: { argb: 'FF92400E' }, bold: true }; // amber-800
+        } else if (c.status === 'closed') {
+          statusCell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFDCFCE7' } }; // green-100
+          statusCell.font = { color: { argb: 'FF166534' }, bold: true }; // green-800
+        }
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      console.error("Export failed:", err);
+      setToast({ message: "Failed to export Excel file.", type: "error" });
+    }
   }, [filteredComplaints]);
 
   const handleImageClick = useCallback((url: string) => {
@@ -575,16 +840,79 @@ function AdminDashboard() {
     }),
     columnHelper.accessor("location", {
       header: "Location",
-      cell: info => (
-        <div className="flex items-center gap-1 min-w-[150px]">
-          <MapPin size={14} className="text-gray-400 shrink-0" />
-          <span className="text-sm truncate max-w-[200px]">{info.getValue()}</span>
-        </div>
-      ),
+      cell: info => {
+        const coords = info.row.original.coordinates;
+        const locationText = info.getValue();
+        return (
+          <div className="flex items-center gap-2 min-w-[200px] group">
+            <MapPin size={14} className="text-gray-400 shrink-0" />
+            <span className="text-sm truncate max-w-[220px]" title={locationText}>{locationText}</span>
+            {coords && (
+              <a 
+                href={`https://www.google.com/maps/dir/?api=1&destination=${coords.lat},${coords.lng}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="ml-auto opacity-100 md:opacity-0 group-hover:opacity-100 p-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 hover:text-blue-700 rounded transition-all flex items-center justify-center shrink-0"
+                title="Get Directions in Google Maps"
+                aria-label="Get Directions"
+              >
+                <Navigation size={14} />
+              </a>
+            )}
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("description", {
       header: "Description",
-      cell: info => <div className="text-sm truncate max-w-[250px]">{info.getValue()}</div>,
+      cell: info => {
+        if (editingId === info.row.original.id) {
+          return (
+            <div className="flex items-center gap-2 min-w-[250px]" onClick={e => e.stopPropagation()}>
+              <input
+                autoFocus
+                value={editingDescription}
+                onChange={e => setEditingDescription(e.target.value)}
+                className="flex-1 text-sm border border-blue-400 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <button 
+                onClick={() => handleEditDescription(info.row.original.id, editingDescription)}
+                className="p-1 text-green-600 hover:bg-green-50 rounded"
+                title="Save"
+              >
+                <Save size={16} />
+              </button>
+              <button 
+                onClick={() => setEditingId(null)}
+                className="p-1 text-gray-500 hover:bg-gray-100 rounded"
+                title="Cancel"
+              >
+                <X size={16} />
+              </button>
+            </div>
+          );
+        }
+
+        return (
+          <div className="text-sm truncate max-w-[250px] group relative flex items-center justify-between">
+            <span title={info.getValue()}>{info.getValue()}</span>
+            {role === "super_admin" && (
+              <button 
+                onClick={(e) => { 
+                  e.stopPropagation(); 
+                  setEditingId(info.row.original.id); 
+                  setEditingDescription(info.getValue()); 
+                }} 
+                className="opacity-0 group-hover:opacity-100 p-1 text-blue-600 hover:bg-blue-50 rounded transition-all shrink-0 ml-2"
+                title="Edit Description"
+              >
+                <Edit3 size={14} />
+              </button>
+            )}
+          </div>
+        );
+      },
     }),
     columnHelper.accessor("timestamp", {
       header: "Date",
@@ -593,7 +921,22 @@ function AdminDashboard() {
         return <span className="text-sm text-gray-500 whitespace-nowrap">{ts?.toDate ? new Date(ts.toDate()).toLocaleString() : ''}</span>;
       },
     }),
-  ], [handleStatusChange, handleDepartmentChange, handleImageClick]);
+    ...(role === "super_admin" ? [
+      columnHelper.display({
+        id: "actions",
+        header: "Actions",
+        cell: info => (
+          <button 
+            onClick={(e) => { e.stopPropagation(); handleDelete(info.row.original.id); }} 
+            className="text-red-500 hover:bg-red-50 p-1.5 rounded transition-colors"
+            title="Delete Issue"
+          >
+            <Trash2 size={16} />
+          </button>
+        )
+      })
+    ] : [])
+  ], [handleStatusChange, handleDepartmentChange, handleImageClick, editingId, editingDescription, role, handleEditDescription, handleDelete]);
 
   // ── React Table instance ──
   const table = useReactTable({
@@ -695,28 +1038,26 @@ function AdminDashboard() {
         <div className="flex items-center gap-2 text-sm font-medium text-gray-500">
           <Filter size={16} /> Filters:
         </div>
-        <select
+        <FilterDropdown
           value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Filter by status"
-        >
-          <option value="all">All Statuses</option>
-          <option value="open">Open</option>
-          <option value="working">In Progress</option>
-          <option value="closed">Resolved</option>
-        </select>
-        <select
+          onChange={setStatusFilter}
+          label="Filter by status"
+          options={[
+            { value: "all", label: "All Statuses" },
+            { value: "open", label: "Open" },
+            { value: "working", label: "In Progress" },
+            { value: "closed", label: "Resolved" },
+          ]}
+        />
+        <FilterDropdown
           value={categoryFilter}
-          onChange={(e) => setCategoryFilter(e.target.value)}
-          className="text-sm border border-gray-200 rounded-lg px-3 py-2 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500"
-          aria-label="Filter by category"
-        >
-          <option value="all">All Categories</option>
-          {uniqueCategories.map(cat => (
-            <option key={cat} value={cat}>{cat}</option>
-          ))}
-        </select>
+          onChange={setCategoryFilter}
+          label="Filter by category"
+          options={[
+            { value: "all", label: "All Categories" },
+            ...uniqueCategories.map(cat => ({ value: cat, label: cat }))
+          ]}
+        />
         <div className="flex-1 min-w-[200px] relative">
           <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
           <input
@@ -737,6 +1078,17 @@ function AdminDashboard() {
             </button>
           )}
         </div>
+        <button
+          onClick={() => setShowHeatmap(!showHeatmap)}
+          className={`px-3 py-2 text-sm font-medium rounded-lg border transition-all flex items-center gap-2 ml-auto ${
+            showHeatmap 
+              ? "bg-red-50 text-red-600 border-red-200" 
+              : "bg-white text-gray-600 border-gray-200 hover:bg-gray-50"
+          }`}
+        >
+          <Flame size={16} className={showHeatmap ? "text-red-500" : "text-gray-400"} />
+          {showHeatmap ? "Hide Heatmap" : "Show Heatmap"}
+        </button>
         <div className="text-sm text-gray-500">
           {filteredComplaints.length} of {complaints.length} results
         </div>
@@ -754,6 +1106,10 @@ function AdminDashboard() {
               complaints={mapComplaints}
               focusedLocation={focusedLocation}
               onImageClick={handleImageClick}
+              showHeatmap={showHeatmap}
+              adminLocation={adminLocation}
+              onLocateMe={detectLocation}
+              isLocating={isDetecting}
             />
           )}
         </div>

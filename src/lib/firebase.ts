@@ -38,7 +38,8 @@ export const app = initializeApp(firebaseConfig);
 
 // Initialize Firestore with persistence
 export const db = initializeFirestore(app, {
-  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() })
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+  experimentalForceLongPolling: true
 });
 
 // Initialize Storage
