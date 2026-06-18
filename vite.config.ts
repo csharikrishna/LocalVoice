@@ -11,6 +11,7 @@ export default defineConfig({
     allowedHosts: true,
   },
   build: {
+    chunkSizeWarningLimit: 1000,
     rollupOptions: {
       output: {
         manualChunks: {

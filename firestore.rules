@@ -35,8 +35,9 @@ service cloud.firestore {
     }
 
     function isOnlyUpvoting() {
+      let currentUpvotes = ('upvotes' in resource.data) ? resource.data.upvotes : 0;
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes']) &&
-             request.resource.data.upvotes == (resource.data.upvotes > 0 ? resource.data.upvotes : 0) + 1;
+             request.resource.data.upvotes == currentUpvotes + 1;
     }
 
     // ============================================

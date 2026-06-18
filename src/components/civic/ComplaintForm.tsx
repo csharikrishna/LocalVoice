@@ -155,13 +155,14 @@ interface FormState {
   uploadProgress: number; // 0–100
   errorMessage: string | null;
   trackingToken: string | null;
+  duplicateIssueId: string | null;
 }
 
 type FormAction =
   | { type: "UPLOAD_PROGRESS"; payload: number }
   | { type: "SAVING" }
   | { type: "SUCCESS"; token: string }
-  | { type: "ERROR"; message: string }
+  | { type: "ERROR"; message: string; duplicateIssueId?: string }
   | { type: "RESET" };
 
 function formReducer(state: FormState, action: FormAction): FormState {
@@ -171,11 +172,11 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case "SAVING":
       return { ...state, phase: "saving", uploadProgress: 100 };
     case "SUCCESS":
-      return { phase: "success", uploadProgress: 100, errorMessage: null, trackingToken: action.token };
+      return { phase: "success", uploadProgress: 100, errorMessage: null, trackingToken: action.token, duplicateIssueId: null };
     case "ERROR":
-      return { phase: "error", uploadProgress: 0, errorMessage: action.message, trackingToken: null };
+      return { phase: "error", uploadProgress: 0, errorMessage: action.message, trackingToken: null, duplicateIssueId: action.duplicateIssueId || null };
     case "RESET":
-      return { phase: "idle", uploadProgress: 0, errorMessage: null, trackingToken: null };
+      return { phase: "idle", uploadProgress: 0, errorMessage: null, trackingToken: null, duplicateIssueId: null };
     default:
       return state;
   }
@@ -186,6 +187,7 @@ const INITIAL_STATE: FormState = {
   uploadProgress: 0,
   errorMessage: null,
   trackingToken: null,
+  duplicateIssueId: null,
 };
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -604,19 +606,23 @@ export function ComplaintForm() {
           where("status", "==", "open")
         );
         const snapshot = await getDocs(q);
-        let duplicateFound = false;
+        let duplicateId: string | null = null;
         for (const doc of snapshot.docs) {
           const data = doc.data();
           if (data.coordinates) {
             const dist = getDistance(coords.lat, coords.lng, data.coordinates.lat, data.coordinates.lng);
             if (dist < 50) { // 50 meters
-              duplicateFound = true;
+              duplicateId = doc.id;
               break;
             }
           }
         }
-        if (duplicateFound) {
-          dispatch({ type: "ERROR", message: "A similar issue has already been reported nearby. Please check the public map to upvote it." });
+        if (duplicateId) {
+          dispatch({ 
+            type: "ERROR", 
+            message: "A similar issue has already been reported nearby.",
+            duplicateIssueId: duplicateId
+          });
           setTimeout(() => dispatch({ type: "RESET" }), 5000);
           return;
         }
@@ -1066,10 +1072,23 @@ export function ComplaintForm() {
         {formState.phase === "error" && formState.errorMessage && (
           <div
             role="alert"
-            className="mb-5 p-3.5 rounded-[10px] bg-red-50 border border-red-200 text-sm text-red-700 flex items-start gap-2.5"
+            className="mb-5 p-3.5 rounded-[10px] bg-red-50 border border-red-200 text-sm flex items-start gap-2.5"
           >
-            <AlertCircle size={16} className="shrink-0 mt-0.5" aria-hidden="true" />
-            <span>{formState.errorMessage}</span>
+            <AlertCircle size={16} className="text-red-700 shrink-0 mt-0.5" aria-hidden="true" />
+            <div className="flex-1 text-red-700">
+              <span className="font-semibold">{formState.errorMessage}</span>
+              {formState.duplicateIssueId && (
+                <div className="mt-3">
+                  <a 
+                    href={`/map?issueId=${formState.duplicateIssueId}`}
+                    className="inline-flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-md font-medium transition-colors"
+                  >
+                    <MapPin size={16} className="mr-2" />
+                    View on Map to Upvote
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
         )}
 

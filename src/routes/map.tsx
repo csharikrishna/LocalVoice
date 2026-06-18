@@ -22,6 +22,11 @@ L.Icon.Default.mergeOptions({
 });
 
 export const Route = createFileRoute("/map")({
+  validateSearch: (search: Record<string, unknown>) => {
+    return {
+      issueId: search.issueId as string | undefined,
+    }
+  },
   component: PublicMapRoute,
 });
 
@@ -47,7 +52,7 @@ function MapUpdater({ center }: { center?: [number, number] }) {
   const map = useMap();
   useEffect(() => {
     if (center) {
-      map.flyTo(center, 14, { duration: 1.5 });
+      map.flyTo(center, 18, { duration: 1.5 });
     }
   }, [center, map]);
   return null;
@@ -60,6 +65,7 @@ function PublicMapRoute() {
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
+  const { issueId } = Route.useSearch();
 
   useEffect(() => {
     async function fetchPublicComplaints() {
@@ -83,6 +89,19 @@ function PublicMapRoute() {
           upvotes: doc.data().upvotes || 0,
         } as PublicComplaint));
         setComplaints(data);
+        
+        // Auto-focus logic for duplicates upvoting
+        if (issueId) {
+          const target = data.find(c => c.id === issueId);
+          if (target && target.coordinates) {
+            setFocusedLocation([target.coordinates.lat, target.coordinates.lng]);
+            setViewMode("map");
+            setTimeout(() => {
+              window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+            }, 300);
+          }
+        }
+        
       } catch (err) {
         console.error("Error fetching public map data:", err);
       } finally {
@@ -90,7 +109,7 @@ function PublicMapRoute() {
       }
     }
     fetchPublicComplaints();
-  }, []);
+  }, [issueId]);
 
   const handleUpvote = async (id: string) => {
     try {
