@@ -38,7 +38,7 @@ export function Footer() {
             <li>Institution: Annamacharya Institute of Technology and Sciences</li>
             <li>Discipline: Community Service</li>
             <li>Academic year: 2026–27</li>
-            <li>Guide: Dr. P. Ramesh</li>
+            <li>Guide: Mr.K.Perumal, M.Tech, (PhD)</li>
           </ul>
         </div>
 
