@@ -6,9 +6,9 @@ import { Reveal } from "@/components/civic/Reveal";
 export const Route = createFileRoute("/tech")({
   head: () => ({
     meta: [
-      { title: "Tech & Timeline — LocalVoice" },
-      { name: "description", content: "The technology, system flow, security model, and 8-week build timeline behind LocalVoice." },
-      { property: "og:title", content: "LocalVoice Architecture — Open, secure, reliable" },
+      { title: `Tech & Timeline — ${import.meta.env.VITE_APP_NAME || "LocalVoice"}` },
+      { name: "description", content: `The technology, system flow, security model, and 8-week build timeline behind ${import.meta.env.VITE_APP_NAME || "LocalVoice"}.` },
+      { property: "og:title", content: `${import.meta.env.VITE_APP_NAME || "LocalVoice"} Architecture — Open, secure, reliable` },
       { property: "og:description", content: "System flow, technology stack, security model and an 8-week deployment timeline." },
     ],
   }),

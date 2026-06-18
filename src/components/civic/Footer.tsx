@@ -9,7 +9,7 @@ export function Footer() {
         <div className="col-span-2 lg:col-span-1">
           <div className="flex items-center gap-2.5 text-white">
             <Logo />
-            <span className="font-semibold">LocalVoice</span>
+            <span className="font-semibold">{import.meta.env.VITE_APP_NAME || "LocalVoice"}</span>
           </div>
           <p className="mt-3 text-sm">Smarter communities start with a scan.</p>
           <a
@@ -56,7 +56,7 @@ export function Footer() {
 
       <div className="border-t" style={{ borderColor: "rgba(255,255,255,0.08)" }}>
         <div className="container-x py-5 flex flex-wrap items-center justify-between gap-3 text-xs">
-          <span>© {new Date().getFullYear()} LocalVoice. All rights reserved.</span>
+          <span>© {new Date().getFullYear()} {import.meta.env.VITE_APP_NAME || "LocalVoice"}. All rights reserved.</span>
           <span>Verified under APSCHE Community Service Guidelines.</span>
         </div>
       </div>

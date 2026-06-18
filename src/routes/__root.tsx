@@ -112,7 +112,7 @@ export const Route = createRootRouteWithContext<{
       },
 
       {
-        title: "LocalVoice — Smarter Communities Start With a Scan",
+        title: `${import.meta.env.VITE_APP_NAME || "LocalVoice"} — Smarter Communities Start With a Scan`,
       },
 
       {
@@ -123,7 +123,7 @@ export const Route = createRootRouteWithContext<{
 
       {
         name: "author",
-        content: "LocalVoice",
+        content: import.meta.env.VITE_APP_NAME || "LocalVoice",
       },
 
       {

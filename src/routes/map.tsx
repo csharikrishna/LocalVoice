@@ -1,5 +1,5 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { collection, query, where, getDocs, orderBy, limit, doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import { MapContainer, TileLayer, Marker, Popup, useMap } from "react-leaflet";
@@ -8,6 +8,7 @@ import "leaflet/dist/leaflet.css";
 import { MapPin, Search, Loader2, Clock, CheckCircle2, AlertCircle, Wrench, ThumbsUp, Filter, List, Map as MapIcon, ChevronDown } from "lucide-react";
 import { Reveal } from "@/components/civic/Reveal";
 import { SEO } from "@/components/civic/SEO";
+import { toast } from "sonner";
 
 // Fix leaflet icon
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -66,6 +67,7 @@ function PublicMapRoute() {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
   const { issueId } = Route.useSearch();
+  const markerRefs = useRef<{ [key: string]: L.Marker | null }>({});
 
   useEffect(() => {
     async function fetchPublicComplaints() {
@@ -111,11 +113,20 @@ function PublicMapRoute() {
     fetchPublicComplaints();
   }, [issueId]);
 
+  useEffect(() => {
+    if (issueId && markerRefs.current[issueId]) {
+      setTimeout(() => {
+        markerRefs.current[issueId]?.openPopup();
+      }, 500);
+    }
+  }, [issueId, complaints, viewMode]);
+
   const handleUpvote = async (id: string) => {
     try {
-      const voted = JSON.parse(localStorage.getItem("civicscan_upvotes") || "[]");
+      const appKey = (import.meta.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "_");
+      const voted = JSON.parse(localStorage.getItem(`${appKey}_upvotes`) || "[]");
       if (voted.includes(id)) {
-        alert("You have already upvoted this issue.");
+        toast.info("You've already upvoted this issue.");
         return;
       }
 
@@ -123,7 +134,7 @@ function PublicMapRoute() {
       setComplaints(prev => prev.map(c => c.id === id ? { ...c, upvotes: (c.upvotes || 0) + 1 } : c));
       
       // Update local storage
-      localStorage.setItem("civicscan_upvotes", JSON.stringify([...voted, id]));
+      localStorage.setItem(`${appKey}_upvotes`, JSON.stringify([...voted, id]));
 
       // Update Firestore
       await updateDoc(doc(db, "complaints", id), {
@@ -152,9 +163,9 @@ function PublicMapRoute() {
   return (
     <>
       <SEO 
-        title="Live Issue Map — LocalVoice"
-        description="View civic issues reported across the city in real-time."
-        canonical="https://localvoice.web.app/map"
+        title={`Live Issue Map — ${import.meta.env.VITE_APP_NAME || "LocalVoice"}`}
+        description="View real-time civic issues reported across the city. Filter by category, status, and location."
+        canonical={`${import.meta.env.VITE_APP_URL || "https://localvoice.web.app"}/map`}
       />
       <div className="pt-24 lg:pt-28 min-h-screen bg-slate-50 flex flex-col">
         <div className="container-x py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 z-10 relative">
@@ -259,6 +270,9 @@ function PublicMapRoute() {
                   <Marker 
                     key={c.id} 
                     position={[c.coordinates!.lat, c.coordinates!.lng]}
+                    ref={(m) => {
+                      if (m) markerRefs.current[c.id] = m;
+                    }}
                   >
                     <Popup className="custom-popup">
                       <div className="min-w-[240px]">

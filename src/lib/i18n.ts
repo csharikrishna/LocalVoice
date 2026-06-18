@@ -15,7 +15,7 @@ const resources = {
       },
       home: {
         title: "Report civic issues instantly. Make your community better.",
-        subtitle: "LocalVoice is the fastest way to report potholes, broken streetlights, and garbage dumps directly to the authorities.",
+        subtitle: `${import.meta.env.VITE_APP_NAME || "LocalVoice"} is the fastest way to report potholes, broken streetlights, and garbage dumps directly to the authorities.`,
         reportBtn: "Report an Issue",
         viewMapBtn: "View Live Map",
       },
@@ -71,7 +71,7 @@ const resources = {
       },
       home: {
         title: "పౌర సమస్యలను తక్షణమే నివేదించండి. మీ సమాజాన్ని మెరుగుపరచండి.",
-        subtitle: "గుంతలు, వీధి దీపాలు మరియు చెత్త కుప్పల సమస్యలను అధికారులకు నేరుగా నివేదించడానికి LocalVoice వేగవంతమైన మార్గం.",
+        subtitle: `గుంతలు, వీధి దీపాలు మరియు చెత్త కుప్పల సమస్యలను అధికారులకు నేరుగా నివేదించడానికి ${import.meta.env.VITE_APP_NAME || "LocalVoice"} వేగవంతమైన మార్గం.`,
         reportBtn: "సమస్యను నివేదించండి",
         viewMapBtn: "లైవ్ మ్యాప్ చూడండి",
       },

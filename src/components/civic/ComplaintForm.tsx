@@ -79,12 +79,12 @@ import {
 import { checkRateLimit, recordReportSubmission } from "@/lib/rate-limit";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useHaptics } from "@/hooks/useHaptics";
-import confetti from "canvas-confetti";
 import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { useGeolocation, reverseGeocode } from "@/hooks/useGeolocation";
+import { CivicHeroCard } from "./CivicHeroCard";
 
 // Fix leaflet default icon (webpack asset hashing strips the built-in URL detector)
 import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
@@ -348,6 +348,7 @@ export function ComplaintForm() {
   const [locationEditable, setLocationEditable] = useState(true);
   const [locationDetected, setLocationDetected] = useState(false);
   const [description, setDescription] = useState("");
+  const [isAnonymous, setIsAnonymous] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [dragActive, setDragActive] = useState(false);
@@ -598,7 +599,7 @@ export function ComplaintForm() {
       return;
     }
 
-    if (coords) {
+    if (coords && category !== "other") {
       try {
         const q = query(
           collection(db, "complaints"),
@@ -658,38 +659,13 @@ export function ComplaintForm() {
         department: getDepartmentForCategory(category),
         schemaVersion: 2,
         token,
+        isAnonymous,
       });
 
       recordReportSubmission();
       setRateLimitState(checkRateLimit());
       dispatch({ type: "SUCCESS", token });
       haptics.success();
-      
-      // Fire premium confetti burst
-      const duration = 2500;
-      const end = Date.now() + duration;
-      const colors = ['#1b4fd8', '#ffffff', '#b38a36']; // Primary, White, Accent
-
-      (function frame() {
-        confetti({
-          particleCount: 5,
-          angle: 60,
-          spread: 55,
-          origin: { x: 0 },
-          colors: colors
-        });
-        confetti({
-          particleCount: 5,
-          angle: 120,
-          spread: 55,
-          origin: { x: 1 },
-          colors: colors
-        });
-
-        if (Date.now() < end) {
-          requestAnimationFrame(frame);
-        }
-      }());
       
     } catch (err) {
       console.error("[ComplaintForm] Submit error:", err);
@@ -1061,6 +1037,29 @@ export function ComplaintForm() {
           />
         </div>
 
+        {/* ── Anonymous Reporting Toggle ─────────────────────────────────────── */}
+        <div className="mb-6 flex items-center justify-between p-4 rounded-[12px] bg-slate-50 border border-slate-200">
+          <div>
+            <p className="text-sm font-semibold text-slate-800">Report Anonymously</p>
+            <p className="text-xs text-slate-500 mt-0.5">Hide your identity on the public map.</p>
+          </div>
+          <button
+            type="button"
+            role="switch"
+            aria-checked={isAnonymous}
+            onClick={() => setIsAnonymous(!isAnonymous)}
+            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 ${
+              isAnonymous ? "bg-slate-900" : "bg-slate-300"
+            }`}
+          >
+            <span
+              className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
+                isAnonymous ? "translate-x-6" : "translate-x-1"
+              }`}
+            />
+          </button>
+        </div>
+
         {/* ── Progress ─────────────────────────────────────────────────────── */}
         {isSubmitting && formState.uploadProgress > 0 && (
           <div className="mb-5">
@@ -1094,49 +1093,12 @@ export function ComplaintForm() {
 
         {/* ── Success / Submit ─────────────────────────────────────────────── */}
         {formState.phase === "success" && formState.trackingToken ? (
-          <div className="space-y-3">
-            <div
-              role="status"
-              aria-live="polite"
-              className="p-4 rounded-[12px] bg-green-50 border border-green-200 animate-in fade-in zoom-in duration-300"
-            >
-              <div className="flex items-start gap-2.5">
-                <div className="shrink-0 mt-0.5 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
-                  <Check size={12} className="text-white" aria-hidden="true" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-green-900 text-sm">Report submitted — thank you!</p>
-                  <p className="text-xs text-green-700 mt-1">Your tracking token:</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <code className="flex-1 font-mono font-bold text-sm bg-green-100 text-green-900 px-2.5 py-1.5 rounded-[6px] select-all">
-                      {formState.trackingToken}
-                    </code>
-                    <button
-                      type="button"
-                      onClick={handleCopyToken}
-                      aria-label={copied ? "Copied!" : "Copy tracking token"}
-                      className="shrink-0 p-2 rounded-[6px] bg-green-100 hover:bg-green-200 text-green-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-green-600"
-                    >
-                      {copied
-                        ? <CheckCheck size={15} aria-hidden="true" />
-                        : <Copy size={15} aria-hidden="true" />
-                      }
-                    </button>
-                  </div>
-                  <p className="text-xs text-green-600 mt-2">Save this token to check your complaint status.</p>
-                </div>
-              </div>
-            </div>
-
-            <button
-              type="button"
-              onClick={handleReset}
-              className="w-full h-12 rounded-[10px] font-semibold text-[color:var(--primary)] bg-white transition-all hover:bg-[color:var(--surface-2)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
-              style={{ border: "1.5px solid var(--border)" }}
-            >
-              Submit another report
-            </button>
-          </div>
+          <CivicHeroCard 
+            token={formState.trackingToken} 
+            category={category} 
+            location={locationText} 
+            onReset={handleReset}
+          />
         ) : (
           <div className="flex flex-col gap-4">
             {!rateLimitState.allowed && (

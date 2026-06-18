@@ -1,5 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { collection, query, where, getDocs, doc, updateDoc, increment } from "firebase/firestore";
 import { db } from "@/lib/firebase";
 import {
@@ -14,6 +14,7 @@ import {
   ThumbsUp,
 } from "lucide-react";
 import { Reveal } from "@/components/civic/Reveal";
+import { toast } from "sonner";
 
 type TrackSearch = {
   token?: string;
@@ -25,7 +26,7 @@ export const Route = createFileRoute("/track")({
   }),
   head: () => ({
     meta: [
-      { title: "Track Your Report — LocalVoice" },
+      { title: `Track Your Report — ${import.meta.env.VITE_APP_NAME || "LocalVoice"}` },
       {
         name: "description",
         content:
@@ -83,9 +84,9 @@ function TrackPage() {
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSearch = async (e?: React.FormEvent) => {
+  const handleSearch = async (e?: React.FormEvent, explicitToken?: string) => {
     e?.preventDefault();
-    const trimmed = inputToken.trim().toUpperCase();
+    const trimmed = (explicitToken || inputToken).trim().toUpperCase();
     if (!trimmed) {
       setError("Please enter a tracking token.");
       return;
@@ -123,18 +124,20 @@ function TrackPage() {
   const handleUpvote = async () => {
     if (!result) return;
     try {
-      const voted = JSON.parse(localStorage.getItem("civicscan_upvotes") || "[]");
+      const appKey = (import.meta.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "_");
+      const voted = JSON.parse(localStorage.getItem(`${appKey}_upvotes`) || "[]");
       if (voted.includes(result.id)) {
-        alert("You have already upvoted this issue.");
+        toast.info("You've already upvoted this issue.");
         return;
       }
-
-      setResult(prev => prev ? { ...prev, upvotes: (prev.upvotes || 0) + 1 } : null);
-      localStorage.setItem("civicscan_upvotes", JSON.stringify([...voted, result.id]));
-
-      await updateDoc(doc(db, "complaints", result.id), {
+      
+      const docRef = doc(db, "complaints", result.id);
+      await updateDoc(docRef, {
         upvotes: increment(1)
       });
+      localStorage.setItem(`${appKey}_upvotes`, JSON.stringify([...voted, result.id]));
+
+      setResult(prev => prev ? { ...prev, upvotes: (prev.upvotes || 0) + 1 } : null);
     } catch (err) {
       console.error("Failed to upvote:", err);
       setResult(prev => prev ? { ...prev, upvotes: Math.max(0, (prev.upvotes || 1) - 1) } : null);
@@ -143,12 +146,11 @@ function TrackPage() {
   };
 
   // Auto-search if token is in URL on first load
-  useState(() => {
-    if (urlToken) {
-      setInputToken(urlToken);
-      handleSearch();
+  useEffect(() => {
+    if (urlToken && !searched) {
+      handleSearch(undefined, urlToken);
     }
-  });
+  }, [urlToken]);
 
   return (
     <section className="pt-28 lg:pt-32 pb-20 min-h-screen">

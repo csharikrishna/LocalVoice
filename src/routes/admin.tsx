@@ -156,7 +156,8 @@ function AdminLogin() {
     setError("");
     setLoading(true);
     
-    const adminEmail = `${username}@civicscan.admin`;
+    const domain = (import.meta.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "");
+    const adminEmail = `${username}@${domain}.admin`;
     
     try {
       await signInWithEmailAndPassword(auth, adminEmail, password);
@@ -755,7 +756,8 @@ function AdminDashboard({ role }: { role: "super_admin" | "admin" }) {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `localvoice_complaints_${new Date().toISOString().split('T')[0]}.xlsx`;
+      const appName = (import.meta.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "_");
+      a.download = `${appName}_complaints_${new Date().toISOString().split('T')[0]}.xlsx`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

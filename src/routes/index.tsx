@@ -9,6 +9,7 @@ import { Reveal } from "@/components/civic/Reveal";
 import { ComplaintForm } from "@/components/civic/ComplaintForm";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/civic/SEO";
+import { TrendingVoices } from "@/components/civic/TrendingVoices";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -18,14 +19,15 @@ function Home() {
   return (
     <>
       <SEO 
-        title="LocalVoice — Report local issues in 60 seconds"
+        title={`${import.meta.env.VITE_APP_NAME || "LocalVoice"} — Report local issues in 60 seconds`}
         description="Scan a QR sticker on any public asset and report civic issues to the right authority in under a minute. No app, no account."
-        canonical="https://localvoice.web.app/"
+        canonical={import.meta.env.VITE_APP_URL || "https://localvoice.web.app/"}
       />
       <Hero />
       <Problem />
       <HowItWorks />
       <ReportSection />
+      <TrendingVoices />
       <Features />
       <ExploreMore />
       <FinalCTA />
@@ -74,7 +76,7 @@ function Hero() {
 
           <Reveal delay={380}>
             <p className="mt-7 text-lg lg:text-xl text-[color:var(--text-secondary)] max-w-[560px] leading-[1.55]">
-              {t("home.subtitle", "LocalVoice turns every public asset into a reporting channel. Scan the QR, describe the problem, and it lands with the right authority — in under 60 seconds.")}
+              {t("home.subtitle", `${import.meta.env.VITE_APP_NAME || "LocalVoice"} turns every public asset into a reporting channel. Scan the QR, describe the problem, and it lands with the right authority — in under 60 seconds.`)}
             </p>
           </Reveal>
 
@@ -138,7 +140,7 @@ function Problem() {
           <Reveal delay={160}>
             <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7]">
               In most neighborhoods, reporting a broken streetlight means calling a number
-              that rings out. Reporting a pothole means finding the right office. LocalVoice
+              that rings out. Reporting a pothole means finding the right office. {import.meta.env.VITE_APP_NAME || "LocalVoice"}
               changes that with a single scan.
             </p>
           </Reveal>
@@ -325,7 +327,7 @@ function ExploreMore() {
       to: "/impact" as const,
       eyebrow: "Impact",
       title: "Measurable outcomes & UN SDGs",
-      body: "How LocalVoice aligns with five Sustainable Development Goals and the metrics that prove it.",
+      body: `How ${import.meta.env.VITE_APP_NAME || "LocalVoice"} aligns with five Sustainable Development Goals and the metrics that prove it.`,
     },
     {
       to: "/research" as const,

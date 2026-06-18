@@ -43,7 +43,9 @@ export function Nav() {
       <div className="container-x flex items-center justify-between h-16">
         <Link to="/" className="flex items-center gap-2.5">
           <Logo />
-          <span className="font-semibold text-[color:var(--text-primary)] tracking-tight">LocalVoice</span>
+          <span className="font-semibold text-[color:var(--text-primary)] tracking-tight">
+            {import.meta.env.VITE_APP_NAME || "LocalVoice"}
+          </span>
         </Link>
 
         <ul className="hidden lg:flex items-center gap-8">

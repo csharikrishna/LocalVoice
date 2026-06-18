@@ -86,7 +86,7 @@ function PrintQrRoute() {
           </p>
 
           <h1 className="text-[5.5rem] font-black tracking-[-0.08em] text-slate-950 leading-none">
-            LOCALVOICE
+            {(import.meta.env.VITE_APP_NAME || "LocalVoice").toUpperCase()}
           </h1>
         </div>
 

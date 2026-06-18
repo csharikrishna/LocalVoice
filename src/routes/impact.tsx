@@ -6,9 +6,9 @@ import { StatCounter } from "@/components/civic/StatCounter";
 export const Route = createFileRoute("/impact")({
   head: () => ({
     meta: [
-      { title: "Impact & SDG Alignment — LocalVoice" },
-      { name: "description", content: "How LocalVoice creates measurable civic impact and aligns with five UN Sustainable Development Goals." },
-      { property: "og:title", content: "LocalVoice Impact — Aligned with five UN SDGs" },
+      { title: `Impact & SDG Alignment — ${import.meta.env.VITE_APP_NAME || "LocalVoice"}` },
+      { name: "description", content: `How ${import.meta.env.VITE_APP_NAME || "LocalVoice"} creates measurable civic impact and aligns with five UN Sustainable Development Goals.` },
+      { property: "og:title", content: `${import.meta.env.VITE_APP_NAME || "LocalVoice"} Impact — Aligned with five UN SDGs` },
       { property: "og:description", content: "Real community data, measurable outcomes, and alignment with UN Sustainable Development Goals." },
     ],
   }),

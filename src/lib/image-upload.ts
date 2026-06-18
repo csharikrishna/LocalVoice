@@ -100,10 +100,10 @@ export async function uploadImage(
     const data = await response.json();
     onProgress?.(100);
 
-    // Inject format (f_auto) and quality (q_auto) transformations directly into the secure URL
+    // Inject format (f_auto), quality (q_auto), and width (w_1000) transformations directly into the secure URL
     // e.g., transforms https://res.cloudinary.com/.../upload/v1234/test.jpg 
-    // to https://res.cloudinary.com/.../upload/f_auto,q_auto/v1234/test.jpg
-    const optimizedUrl = data.secure_url.replace("/upload/", "/upload/f_auto,q_auto/");
+    // to https://res.cloudinary.com/.../upload/w_1000,f_auto,q_auto/v1234/test.jpg
+    const optimizedUrl = data.secure_url.replace("/upload/", "/upload/w_1000,f_auto,q_auto/");
     
     return optimizedUrl;
 

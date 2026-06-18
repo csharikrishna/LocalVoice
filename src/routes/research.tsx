@@ -6,9 +6,9 @@ import { Reveal } from "@/components/civic/Reveal";
 export const Route = createFileRoute("/research")({
   head: () => ({
     meta: [
-      { title: "Field Research — LocalVoice" },
-      { name: "description", content: "Door-to-door interviews and priority rankings from neighborhoods in Tirupati that shaped LocalVoice." },
-      { property: "og:title", content: "LocalVoice Field Research — Built from the neighborhood up" },
+      { title: `Field Research — ${import.meta.env.VITE_APP_NAME || "LocalVoice"}` },
+      { name: "description", content: `Door-to-door interviews and priority rankings from neighborhoods in Tirupati that shaped ${import.meta.env.VITE_APP_NAME || "LocalVoice"}.` },
+      { property: "og:title", content: `${import.meta.env.VITE_APP_NAME || "LocalVoice"} Field Research — Built from the neighborhood up` },
       { property: "og:description", content: "What we saw, heard, felt and thought — and the priority issues residents care about most." },
     ],
   }),
@@ -50,7 +50,7 @@ function ResearchPage() {
           <Reveal delay={160}>
             <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7] max-w-[520px]">
               We spent four weeks walking, listening and learning across Tirupati's Ward 4.
-              These observations shaped every screen of LocalVoice.
+              These observations shaped every screen of {import.meta.env.VITE_APP_NAME || "LocalVoice"}.
             </p>
           </Reveal>
           <div className="mt-8 space-y-5">
