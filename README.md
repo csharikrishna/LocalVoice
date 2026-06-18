@@ -85,12 +85,14 @@ Follow these steps to set up the project locally for development.
    VITE_FIREBASE_APP_ID="your_firebase_app_id"
    
    VITE_ADMIN_USERNAME="your_admin_username"
-   VITE_ADMIN_PASSWORD="your_admin_password"
    VITE_ADMIN_EMAIL="your_admin_email"
+   VITE_STANDARD_ADMIN_USERNAME="your_standard_admin_username"
    
    VITE_CLOUDINARY_CLOUD_NAME="your_cloudinary_cloud_name"
    VITE_CLOUDINARY_UPLOAD_PRESET="your_unsigned_preset_name"
    ```
+
+   **Note:** Admin authentication is securely handled by Firebase Auth. Create your initial admin users directly in the Firebase Console matching the emails defined in your `.env`.
 
 4. **Run the Development Server**
    ```bash

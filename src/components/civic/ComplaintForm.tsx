@@ -78,6 +78,8 @@ import {
 } from "@/lib/image-upload";
 import { checkRateLimit, recordReportSubmission } from "@/lib/rate-limit";
 import ReCAPTCHA from "react-google-recaptcha";
+import { useHaptics } from "@/hooks/useHaptics";
+import confetti from "canvas-confetti";
 import { useTranslation } from "react-i18next";
 import { MapContainer, TileLayer, Marker } from "react-leaflet";
 import L from "leaflet";
@@ -337,6 +339,7 @@ function StructuredLocationInput({
 
 export function ComplaintForm() {
   const { t } = useTranslation();
+  const haptics = useHaptics();
   // ── Field state ─────────────────────────────────────────────────────────────
   const [category, setCategory] = useState<CategoryId>("streetlight");
   const [locationText, setLocationText] = useState("");
@@ -385,9 +388,11 @@ export function ComplaintForm() {
       setCoords(newCoords);
       setLocationDetected(true);
       setLocationEditable(false);
+      haptics.success();
     },
     onError: (message) => {
       setFieldErrors(prev => ({ ...prev, location: message }));
+      haptics.error();
     }
   });
 
@@ -652,6 +657,34 @@ export function ComplaintForm() {
       recordReportSubmission();
       setRateLimitState(checkRateLimit());
       dispatch({ type: "SUCCESS", token });
+      haptics.success();
+      
+      // Fire premium confetti burst
+      const duration = 2500;
+      const end = Date.now() + duration;
+      const colors = ['#1b4fd8', '#ffffff', '#b38a36']; // Primary, White, Accent
+
+      (function frame() {
+        confetti({
+          particleCount: 5,
+          angle: 60,
+          spread: 55,
+          origin: { x: 0 },
+          colors: colors
+        });
+        confetti({
+          particleCount: 5,
+          angle: 120,
+          spread: 55,
+          origin: { x: 1 },
+          colors: colors
+        });
+
+        if (Date.now() < end) {
+          requestAnimationFrame(frame);
+        }
+      }());
+      
     } catch (err) {
       console.error("[ComplaintForm] Submit error:", err);
 
@@ -667,6 +700,7 @@ export function ComplaintForm() {
       }
 
       dispatch({ type: "ERROR", message });
+      haptics.error();
       // Auto-clear error after 5 s so the button recovers
       setTimeout(() => dispatch({ type: "RESET" }), 5000);
     }
@@ -725,9 +759,12 @@ export function ComplaintForm() {
                   type="button"
                   role="radio"
                   aria-checked={active}
-                  onClick={() => setCategory(id)}
+                  onClick={() => {
+                    setCategory(id);
+                    haptics.lightTap();
+                  }}
                   disabled={isSubmitting}
-                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-2 rounded-full transition-all duration-150 disabled:opacity-40 min-h-[40px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
+                  className="inline-flex items-center gap-1.5 text-xs sm:text-sm font-medium px-3 py-2 rounded-full transition-all duration-150 active:scale-95 disabled:opacity-40 min-h-[40px] sm:min-h-[44px] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
                   style={{
                     background: active ? "var(--primary)" : "var(--surface-2)",
                     color: active ? "#fff" : "var(--text-secondary)",
@@ -752,9 +789,12 @@ export function ComplaintForm() {
               <div className="flex gap-2 w-full">
                 <button
                   type="button"
-                  onClick={detectLocation}
+                  onClick={() => {
+                    detectLocation();
+                    haptics.lightTap();
+                  }}
                   disabled={isSubmitting || isDetecting}
-                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-[10px] text-sm font-semibold transition-all border border-[color:var(--primary)] text-[color:var(--primary)] hover:bg-blue-50 disabled:opacity-50"
+                  className="flex-1 flex items-center justify-center gap-2 py-3 rounded-[10px] text-sm font-semibold transition-all duration-150 active:scale-[0.98] border border-[color:var(--primary)] text-[color:var(--primary)] hover:bg-blue-50 disabled:opacity-50"
                 >
                   {isDetecting ? (
                     <>
@@ -982,9 +1022,9 @@ export function ComplaintForm() {
               tabIndex={0}
               aria-label={`Upload a photo. Maximum ${IMAGE_CONFIG.MAX_SIZE_MB}MB, formats: ${IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(", ").toUpperCase()}`}
               aria-describedby={fieldErrors.photo ? "photo-error" : undefined}
-              className="flex flex-col items-center justify-center gap-2 py-7 rounded-[12px] cursor-pointer transition-all duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
+              className={`flex flex-col items-center justify-center gap-2 py-7 rounded-[12px] cursor-pointer transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2 ${dragActive ? 'scale-[1.02] shadow-[0_0_24px_rgba(27,79,216,0.12)]' : ''}`}
               style={{
-                background: dragActive ? "rgba(27,79,216,0.06)" : "var(--surface-2)",
+                background: dragActive ? "rgba(27,79,216,0.04)" : "var(--surface-2)",
                 border: dragActive
                   ? "2px dashed var(--primary)"
                   : "1.5px dashed var(--border-hover)",
@@ -1039,7 +1079,7 @@ export function ComplaintForm() {
             <div
               role="status"
               aria-live="polite"
-              className="p-4 rounded-[12px] bg-green-50 border border-green-200"
+              className="p-4 rounded-[12px] bg-green-50 border border-green-200 animate-in fade-in zoom-in duration-300"
             >
               <div className="flex items-start gap-2.5">
                 <div className="shrink-0 mt-0.5 h-5 w-5 bg-green-500 rounded-full flex items-center justify-center">
@@ -1104,12 +1144,15 @@ export function ComplaintForm() {
               type="submit"
               disabled={isSubmitting || !rateLimitState.allowed}
               aria-busy={isSubmitting}
-              className="w-full inline-flex items-center justify-center gap-2 h-12 rounded-[10px] font-semibold text-white transition-all duration-200 disabled:opacity-70 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
+              className="relative overflow-hidden w-full inline-flex items-center justify-center gap-2 h-12 rounded-[10px] font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-80 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
               style={{
                 background: formState.phase === "error" || !rateLimitState.allowed ? "#dc2626" : "var(--primary)",
                 boxShadow: (!isSubmitting && rateLimitState.allowed) ? "0 4px 16px rgba(27,79,216,0.25)" : "none",
               }}
             >
+              {isSubmitting && (
+                <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
+              )}
               {isSubmitting
                 ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}</>
                 : submitLabel

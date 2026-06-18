@@ -161,24 +161,7 @@ function AdminLogin() {
     try {
       await signInWithEmailAndPassword(auth, adminEmail, password);
     } catch (err: any) {
-      // If the account doesn't exist, but it matches our .env credentials precisely, auto-create it securely.
-      if (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found") {
-        if (
-          (username === import.meta.env.VITE_ADMIN_USERNAME && password === import.meta.env.VITE_ADMIN_PASSWORD) ||
-          (username === import.meta.env.VITE_STANDARD_ADMIN_USERNAME && password === import.meta.env.VITE_STANDARD_ADMIN_PASSWORD)
-        ) {
-          try {
-            await createUserWithEmailAndPassword(auth, adminEmail, password);
-            return; // Successful auto-creation and login
-          } catch (createErr: any) {
-            setError("Failed to initialize admin account: " + createErr.message);
-          }
-        } else {
-          setError("Invalid credentials. Please check your username and password.");
-        }
-      } else {
-        setError("Invalid credentials. Please check your username and password.");
-      }
+      setError("Invalid credentials. Please check your username and password.");
     } finally {
       setLoading(false);
     }

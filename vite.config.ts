@@ -10,6 +10,17 @@ export default defineConfig({
   server: {
     allowedHosts: true,
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          'leaflet': ['react-leaflet', 'leaflet'],
+          'lucide': ['lucide-react'],
+        }
+      }
+    }
+  },
   plugins: [
     TanStackRouterVite(),
     tailwindcss(),
