@@ -1,0 +1,11 @@
+LocalVoice AI Discovery
+
+Website: https://localvoice.web.app
+
+Canonical: https://localvoice.web.app/llms.txt
+Expanded: https://localvoice.web.app/llms-full.txt
+
+Sitemap: https://localvoice.web.app/sitemap.xml
+Robots: https://localvoice.web.app/robots.txt
+
+Description: A progressive civic engagement platform empowering citizens to instantly report community issues via QR codes and geolocation.

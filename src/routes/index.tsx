@@ -8,24 +8,20 @@ import { PulseMap } from "@/components/civic/PulseMap";
 import { Reveal } from "@/components/civic/Reveal";
 import { ComplaintForm } from "@/components/civic/ComplaintForm";
 import { useTranslation } from "react-i18next";
+import { SEO } from "@/components/civic/SEO";
 
 export const Route = createFileRoute("/")({
-  head: () => ({
-    meta: [
-      { title: "LocalVoice — Report local issues in 60 seconds" },
-      {
-        name: "description",
-        content:
-          "Scan a QR sticker on any public asset and report civic issues to the right authority in under a minute. No app, no account.",
-      },
-    ],
-  }),
   component: Home,
 });
 
 function Home() {
   return (
     <>
+      <SEO 
+        title="LocalVoice — Report local issues in 60 seconds"
+        description="Scan a QR sticker on any public asset and report civic issues to the right authority in under a minute. No app, no account."
+        canonical="https://localvoice.web.app/"
+      />
       <Hero />
       <Problem />
       <HowItWorks />

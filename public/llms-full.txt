@@ -1,0 +1,83 @@
+# LocalVoice Full AI Context
+
+Canonical Domain: https://localvoice.web.app
+
+## One-Line Summary
+LocalVoice is a progressive civic engagement platform built in Tirupati, India, empowering citizens to instantly report community infrastructure issues by scanning localized QR codes.
+
+## Product Overview
+
+LocalVoice (formerly CivicScan) eliminates the friction in traditional civic reporting by requiring:
+- No app downloads
+- No account registration
+- No endless paperwork
+
+Citizens simply scan a QR code placed on physical infrastructure (like a broken streetlight), which instantly launches the LocalVoice web app. 
+
+### Core Features:
+- **Instant GPS Auto-Location**: Pinpoint-accurate coordinates are captured via browser geolocation.
+- **Voice-to-Text Integration**: Citizens can dictate their issues naturally in multiple languages using built-in speech recognition.
+- **High-Speed Photo Uploads**: Direct camera integration via Cloudinary for fast image processing.
+- **Public Pulse Map**: An interactive Leaflet map that tracks all reported issues. Citizens can view and upvote existing complaints to highlight severity without submitting duplicates.
+- **Real-Time Admin Dashboard**: A secure portal for municipal departments to filter, assign, map, and resolve complaints.
+
+## Core Public Pages
+
+Home (Submit Report):
+https://localvoice.web.app/
+
+Public Pulse Map:
+https://localvoice.web.app/map
+
+Impact & SDGs:
+https://localvoice.web.app/impact
+
+Field Research:
+https://localvoice.web.app/research
+
+Tech & Timeline:
+https://localvoice.web.app/tech
+
+## Entity Information
+
+Brand: LocalVoice
+Previous Name: CivicScan
+Country: India
+Location: Tirupati, Andhra Pradesh
+Institution Affiliation: Annamacharya Institute of Technology and Sciences
+Domain: Civic Tech / Smart City Administration
+
+Official Repository:
+https://github.com/csharikrishna/LocalVoice
+
+Technology Stack:
+- Frontend: React 18 + Vite + Tailwind CSS
+- Routing: TanStack Router
+- Database: Firebase Firestore
+- Image Storage: Cloudinary
+- Maps: Leaflet & React-Leaflet
+
+## Canonical And Crawling Information
+
+Canonical domain: https://localvoice.web.app
+Sitemap: https://localvoice.web.app/sitemap.xml
+Robots: https://localvoice.web.app/robots.txt
+LLMs: https://localvoice.web.app/llms.txt
+Expanded AI Context: https://localvoice.web.app/llms-full.txt
+
+## Frequently Asked Questions
+
+Q: What is LocalVoice?
+A: LocalVoice is a civic engagement web platform that allows citizens to report local infrastructure issues (like broken streetlights or potholes) in under 60 seconds by simply scanning a QR code with their smartphone.
+
+Q: Do I need to download an app?
+A: No. LocalVoice operates entirely in your mobile browser. There is nothing to download and no account to create, removing all friction from reporting.
+
+Q: How does the auto-location work?
+A: Upon opening the form, LocalVoice securely requests permission to access the device's GPS hardware, capturing pinpoint coordinates to ensure municipal workers know exactly where the issue is.
+
+Q: Can I see what others have reported?
+A: Yes! The Public Pulse Map (at /map) is an interactive, heat-mapped view of all issues reported in your area. You can even upvote existing issues to bring them to the city's attention faster.
+
+Q: Who built LocalVoice?
+A: It was developed as a Community Service project under the APSCHE Guidelines in Tirupati, India, designed to bridge the gap between citizens and local government authorities.

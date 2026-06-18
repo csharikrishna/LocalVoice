@@ -13,6 +13,8 @@ import { type ReactNode } from "react";
 import appCss from "../styles.css?url";
 import { Nav } from "@/components/civic/Nav";
 import { Footer } from "@/components/civic/Footer";
+import { SEO } from "@/components/civic/SEO";
+import { HelmetProvider } from "react-helmet-async";
 
 function NotFoundComponent() {
   return (
@@ -128,43 +130,6 @@ export const Route = createRootRouteWithContext<{
         name: "theme-color",
         content: "#0f172a",
       },
-
-      {
-        property: "og:title",
-        content: "LocalVoice — Smarter Communities Start With a Scan",
-      },
-
-      {
-        property: "og:description",
-        content:
-          "QR-based civic issue reporting. No app. No account. No paperwork.",
-      },
-
-      {
-        property: "og:type",
-        content: "website",
-      },
-
-      {
-        property: "og:site_name",
-        content: "LocalVoice",
-      },
-
-      {
-        name: "twitter:card",
-        content: "summary_large_image",
-      },
-
-      {
-        name: "twitter:title",
-        content: "LocalVoice",
-      },
-
-      {
-        name: "twitter:description",
-        content:
-          "QR-powered civic issue reporting for smarter communities.",
-      },
     ],
 
     links: [
@@ -210,11 +175,12 @@ export const Route = createRootRouteWithContext<{
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <>
+    <HelmetProvider>
       <HeadContent />
+      <SEO />
       {children}
       <Scripts />
-    </>
+    </HelmetProvider>
   );
 }
 
