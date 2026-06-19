@@ -212,8 +212,8 @@ function ReportSection() {
   return (
     <section className="relative overflow-hidden">
       <div className="absolute inset-y-0 right-0 w-full lg:w-[45%]" style={{ background: "var(--primary)" }} aria-hidden="true" />
-      <div className="container-x relative grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 section-y items-center">
-        <div>
+      <div className="container-x relative grid lg:grid-cols-[1.1fr_1fr] gap-12 lg:gap-16 section-y items-start">
+        <div className="lg:sticky lg:top-32 lg:self-start">
           <Reveal><span className="eyebrow">Report an issue</span></Reveal>
           <Reveal delay={80}>
             <h2 className="mt-3 text-3xl md:text-4xl font-extrabold text-white lg:text-[color:var(--text-primary)]" style={{ letterSpacing: "-0.03em" }}>
