@@ -4,6 +4,7 @@ import { toPng } from "html-to-image";
 import { QRCodeSVG } from "qrcode.react";
 import { useState } from "react";
 import { ShareRecordDialog } from "./ShareRecordDialog";
+import { toast } from "sonner";
 
 interface CivicHeroCardProps {
   token: string;
@@ -32,15 +33,46 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
         }
       });
 
-      const link = document.createElement("a");
       const appPrefix = (import.meta.env.VITE_APP_NAME || "localvoice").toLowerCase().replace(/\s+/g, "_");
-      link.download = `${appPrefix}-receipt-${token}.png`;
-      link.href = dataUrl;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-    } catch (err) {
+      const filename = `${appPrefix}-receipt-${token}.png`;
+
+      // On mobile (especially iOS Safari), programmatic downloads of Data URLs often silently fail.
+      // The most reliable way to "Save" an image on mobile is using the native Share sheet.
+      let sharedNatively = false;
+      if (typeof navigator !== "undefined" && navigator.share) {
+        try {
+          const blob = await (await fetch(dataUrl)).blob();
+          const file = new File([blob], filename, { type: "image/png" });
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: "Save Receipt",
+            });
+            sharedNatively = true;
+          }
+        } catch (shareErr: any) {
+          if (shareErr.name !== "AbortError") {
+            console.warn("Native share for saving failed, falling back to anchor download", shareErr);
+          } else {
+            sharedNatively = true; // User cancelled the share sheet, do not fallback
+          }
+        }
+      }
+
+      // Fallback for Desktop or browsers without Web Share API
+      if (!sharedNatively) {
+        const link = document.createElement("a");
+        link.download = filename;
+        link.href = dataUrl;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        toast.success("Receipt downloaded!");
+      }
+
+    } catch (err: any) {
       console.error("Failed to download card:", err);
+      toast.error("Failed to generate receipt: " + (err.message || "Unknown error"));
     }
   };
 
