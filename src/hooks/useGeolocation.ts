@@ -26,8 +26,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 
 const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
 const NOMINATIM_HEADERS = { "Accept-Language": "en" };
-const ACCURACY_THRESHOLD_M = 30; // GPS-lock quality; below this we trust the fix
-const MAX_WAIT_MS = 15_000;
+const ACCURACY_THRESHOLD_M = 65; // Wi-Fi assisted location is usually ~65m. This allows near-instant locks on mobile.
+const MAX_WAIT_MS = 6000; // Reduced from 15s to 6s so users never wait too long.
 
 // ─── Reverse geocoding ──────────────────────────────────────────────────────
 
