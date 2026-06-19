@@ -34,6 +34,12 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isSuperAdmin() {
+      // Check if the currently authenticated user has the 'admin' role in the database
+      return request.auth != null && 
+             get(/databases/$(database)/documents/admins/$(request.auth.token.email)).data.role == 'admin';
+    }
+
     function isOnlyUpvoting() {
       let currentUpvotes = ('upvotes' in resource.data) ? resource.data.upvotes : 0;
       return request.resource.data.diff(resource.data).affectedKeys().hasOnly(['upvotes']) &&
@@ -67,6 +73,16 @@ service cloud.firestore {
       allow create, update, delete: if 
         request.auth != null && 
         request.auth.token.admin == true;
+    }
+
+    // ============================================
+    // Admins Collection (Role-Based Access Control)
+    // ============================================
+    
+    match /admins/{adminId} {
+      allow read: if request.auth != null;
+      // ONLY Superadmins can create, update, or delete other admins to prevent privilege escalation
+      allow write: if isSuperAdmin();
     }
 
     // ============================================

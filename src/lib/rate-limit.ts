@@ -1,5 +1,5 @@
 const RATE_LIMIT_KEY = `${(import.meta.env.VITE_APP_NAME || "localvoice").toLowerCase().replace(/\s+/g, "_")}_reports_dev`;
-const MAX_REPORTS_PER_DAY = 999;
+const MAX_REPORTS_PER_DAY = 24;
 
 interface ReportRecord {
   timestamp: number;

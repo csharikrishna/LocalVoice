@@ -27,6 +27,9 @@ LocalVoice (formerly CivicScan) is a progressive civic engagement platform desig
 - **Voice-to-Text Integration**: Citizens can dictate their issues naturally using the built-in microphone feature powered by browser Speech Recognition.
 - **High-Speed Photo Uploads**: Direct camera integration via Cloudinary allows users to attach photos of the problem instantly, without burdening the database.
 - **Public Pulse Map**: An interactive map tracks all issues globally. Citizens can view and upvote existing complaints to highlight their severity without submitting duplicate tickets.
+- **Anonymous Notification Tracking**: Using a secure `localStorage` fingerprinting method, citizens can track the real-time status of their specific reports on a personal dashboard ("My Reports") without ever creating an account or handing over personal information.
+- **Enterprise Staff Management Portal**: A fully-featured Superadmin dashboard to visually track staff members, assign roles (Department Admin, Field Worker, Dispatcher), instantly suspend malicious actors, and provision Firebase Auth accounts directly from the client.
+- **Gamified Anti-Spam Rate Limits**: To protect the database from bots while rewarding active citizens, a tiered soft-limit system is implemented. Users receive celebratory UI prompts when they act as "Civic Heroes" and approach their daily reporting limit, backed by Google ReCAPTCHA.
 - **Real-Time Admin Dashboard**: A dedicated dashboard allows city departments to filter, assign, map, and update the status of complaints in real-time.
 - **QR Poster Generator**: Automatically generate and print localized, translated QR code posters to stick around neighborhoods.
 

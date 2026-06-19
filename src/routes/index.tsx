@@ -10,6 +10,7 @@ import { ComplaintForm } from "@/components/civic/ComplaintForm";
 import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/civic/SEO";
 import { TrendingVoices } from "@/components/civic/TrendingVoices";
+import { MyReportsView } from "@/components/civic/MyReportsView";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -27,6 +28,7 @@ function Home() {
       <Problem />
       <HowItWorks />
       <ReportSection />
+      <TrackSection />
       <TrendingVoices />
       <Features />
       <ExploreMore />
@@ -247,6 +249,34 @@ function ReportSection() {
             <ComplaintForm />
           </Reveal>
         </div>
+      </div>
+    </section>
+  );
+}
+
+/* ---------------- TRACK MY REPORTS ---------------- */
+function TrackSection() {
+  return (
+    <section id="track" className="section-y" style={{ background: "var(--surface-2)" }}>
+      <div className="container-x">
+        <div className="max-w-[760px] mb-8">
+          <Reveal><span className="eyebrow">My Reports</span></Reveal>
+          <Reveal delay={80}>
+            <h2 className="mt-3 text-3xl md:text-4xl font-extrabold" style={{ letterSpacing: "-0.03em" }}>
+              Track your civic impact.
+            </h2>
+          </Reveal>
+          <Reveal delay={160}>
+            <p className="mt-5 text-lg text-[color:var(--text-secondary)] leading-[1.7]">
+              Secure, anonymous tracking. These are the reports you've submitted from this device.
+            </p>
+          </Reveal>
+        </div>
+        <Reveal delay={240}>
+          <div className="max-w-3xl mx-auto">
+            <MyReportsView />
+          </div>
+        </Reveal>
       </div>
     </section>
   );

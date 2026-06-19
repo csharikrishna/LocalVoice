@@ -15,6 +15,7 @@ import { Nav } from "@/components/civic/Nav";
 import { Footer } from "@/components/civic/Footer";
 import { SEO } from "@/components/civic/SEO";
 import { HelmetProvider } from "react-helmet-async";
+import { Toaster } from "sonner";
 
 function NotFoundComponent() {
   return (
@@ -203,6 +204,7 @@ function RootComponent() {
         </main>
 
         {!isPrintQr && <Footer />}
+        <Toaster position="top-right" richColors />
       </div>
     </QueryClientProvider>
   );

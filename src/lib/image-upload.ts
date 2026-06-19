@@ -74,7 +74,7 @@ export async function uploadImage(
       maxSizeMB: 1.5,           // Compress to ~1.5MB max
       maxWidthOrHeight: 1920,   // Max dimension 1080p equivalent
       useWebWorker: true,
-      exifOrientation: true     // Read EXIF to orient correctly, then strip all other EXIF data
+      exifOrientation: 1        // Read EXIF to orient correctly, then strip all other EXIF data
     };
     
     const compressedFile = await imageCompression(file, options);

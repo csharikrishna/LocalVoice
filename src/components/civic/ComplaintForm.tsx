@@ -594,7 +594,7 @@ export function ComplaintForm() {
 
     const { allowed } = checkRateLimit();
     if (!allowed) {
-      dispatch({ type: "ERROR", message: "You have reached the limit of 3 reports per day. Please try again tomorrow." });
+      dispatch({ type: "ERROR", message: "Wow, what a Civic Hero! You have reached the limit of 24 reports for today." });
       setRateLimitState({ allowed: false, remaining: 0 });
       return;
     }
@@ -647,7 +647,7 @@ export function ComplaintForm() {
 
       const token = generateToken();
 
-      await addDoc(collection(db, "complaints"), {
+      const docRef = await addDoc(collection(db, "complaints"), {
         category,
         location: locationText,
         coordinates: coords ?? null,
@@ -661,6 +661,17 @@ export function ComplaintForm() {
         token,
         isAnonymous,
       });
+
+      try {
+        const stored = localStorage.getItem('localVoice_my_reports');
+        const myReports = stored ? JSON.parse(stored) : [];
+        if (!myReports.includes(docRef.id)) {
+          myReports.push(docRef.id);
+        }
+        localStorage.setItem('localVoice_my_reports', JSON.stringify(myReports));
+      } catch (e) {
+        console.error("Failed to save to local storage", e);
+      }
 
       recordReportSubmission();
       setRateLimitState(checkRateLimit());
@@ -1102,11 +1113,21 @@ export function ComplaintForm() {
         ) : (
           <div className="flex flex-col gap-4">
             {!rateLimitState.allowed && (
-              <div className="p-4 rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-2.5">
-                <AlertCircle size={16} className="text-red-700 shrink-0 mt-0.5" />
-                <div className="text-sm text-red-700">
-                  <p className="font-bold">Daily Limit Reached</p>
-                  <p className="mt-1">You have submitted the maximum of 3 reports for today. Thank you for your civic engagement! Please come back tomorrow to submit more.</p>
+              <div className="p-4 rounded-[12px] bg-indigo-50 border border-indigo-200 flex items-start gap-2.5">
+                <AlertCircle size={16} className="text-indigo-700 shrink-0 mt-0.5" />
+                <div className="text-sm text-indigo-700">
+                  <p className="font-bold">Wow, what a Civic Hero!</p>
+                  <p className="mt-1">Thanks for saving this city from issues and thanks for your survey today and letting us know! You've reached the maximum limit of 24 reports for today. Get some rest and come back tomorrow!</p>
+                </div>
+              </div>
+            )}
+
+            {rateLimitState.allowed && rateLimitState.remaining <= 6 && (
+              <div className="p-4 rounded-[12px] bg-amber-50 border border-amber-200 flex items-start gap-2.5 mb-2">
+                <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
+                <div className="text-sm text-amber-700">
+                  <p className="font-bold">You are reaching your limit!</p>
+                  <p className="mt-1">You have {rateLimitState.remaining} requests left today. Thanks for being so active in your community!</p>
                 </div>
               </div>
             )}

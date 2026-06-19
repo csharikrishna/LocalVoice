@@ -34,3 +34,10 @@ dist-ssr
 *.sw?
 
 .vercel
+admin_credentials.md
+
+# Firebase
+.firebase/
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log

@@ -236,7 +236,7 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
                 ))}
               </div>
 
-              {typeof navigator !== "undefined" && navigator.share && (
+              {typeof navigator !== "undefined" && typeof navigator.share === "function" && (
                 <Button
                   variant="secondary"
                   className="w-full gap-2 rounded-xl h-11 bg-slate-100 text-slate-700 hover:bg-slate-200 font-bold"
