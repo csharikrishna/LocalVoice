@@ -33,6 +33,16 @@ export default defineConfig(({ isSsrBuild }) => ({
     tanstackStart(),
     nitro({
       preset: "vercel",
+      externals: {
+        external: [
+          "firebase-admin",
+          "firebase-admin/app",
+          "firebase-admin/firestore",
+          "firebase-admin/auth",
+          "@grpc/grpc-js",
+          "google-gax",
+        ],
+      },
     }),
     tailwindcss(),
     tsconfigPaths(),
