@@ -29,17 +29,14 @@ service firebase.storage {
     // ============================================
     
     match /complaints/{complaintId}/{fileName} {
-      // Allow uploads to complaints folder
-      allow create: if 
-        isImage() &&
-        isValidSize() &&
-        isValidImageType();
+      // Create and Delete must be done via the server-side Admin SDK.
+      // Do not allow direct client modifications to avoid abuse.
+      allow create: if false;
 
       // Allow public read (anyone can view complaint photos)
       allow read: if true;
 
-      // Only allow delete if authenticated (for cleanup)
-      allow delete: if request.auth != null;
+      allow delete: if false;
     }
 
     // ============================================

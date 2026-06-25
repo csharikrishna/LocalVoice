@@ -46,14 +46,14 @@
  *   • Consistent error boundary messaging
  */
 
-import {
-  useEffect,
-  useRef,
-  useState,
-  useCallback,
-  useMemo,
-  useReducer,
-} from "react";
+import { useEffect, useRef, useState, useCallback, useMemo, useReducer, Suspense, lazy } from "react";
+const ComplaintMapLeaflet = lazy(() => import("./ComplaintMapLeaflet"));
+
+function ClientOnly({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => { setMounted(true); }, []);
+  return mounted ? <>{children}</> : null;
+}
 import {
   Check,
   MapPin,
@@ -67,55 +67,35 @@ import {
   CheckCheck,
   ChevronDown,
 } from "lucide-react";
-import { collection, addDoc, serverTimestamp, getDocs, query, where } from "firebase/firestore";
-import { db } from "@/lib/firebase";
 import { z } from "zod";
-import {
-  uploadImage,
-  validateImageFile,
-  ImageUploadError,
-  IMAGE_CONFIG,
-} from "@/lib/image-upload";
-import { checkRateLimit, recordReportSubmission } from "@/lib/rate-limit";
+import imageCompression from "browser-image-compression";
+import { validateImageFile, ImageUploadError, IMAGE_CONFIG } from "@/lib/image-upload";
+import { checkRateLimit, getRateLimitClientId, recordReportSubmission } from "@/lib/rate-limit";
 import ReCAPTCHA from "react-google-recaptcha";
 import { useHaptics } from "@/hooks/useHaptics";
 import { useTranslation } from "react-i18next";
-import { MapContainer, TileLayer, Marker } from "react-leaflet";
-import L from "leaflet";
-import "leaflet/dist/leaflet.css";
 import { useGeolocation, reverseGeocode } from "@/hooks/useGeolocation";
 import { CivicHeroCard } from "./CivicHeroCard";
-
-// Fix leaflet default icon (webpack asset hashing strips the built-in URL detector)
-import markerIcon2x from "leaflet/dist/images/marker-icon-2x.png";
-import markerIcon from "leaflet/dist/images/marker-icon.png";
-import markerShadow from "leaflet/dist/images/marker-shadow.png";
-
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconUrl: markerIcon,
-  iconRetinaUrl: markerIcon2x,
-  shadowUrl: markerShadow,
-});
+import { submitComplaint } from "@/lib/api/complaints.functions";
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
 const DESCRIPTION_MAX = 300;
 
 const CATEGORIES = [
-  { id: "streetlight",    label: "Streetlight" },
-  { id: "water",          label: "Water" },
-  { id: "garbage",        label: "Garbage" },
-  { id: "roads",          label: "Roads" },
-  { id: "drainage",       label: "Drainage" },
-  { id: "electricity",    label: "Electricity" },
-  { id: "encroachment",   label: "Encroachment" },
-  { id: "publictoilet",   label: "Public Toilet" },
-  { id: "park",           label: "Park / Garden" },
-  { id: "other",          label: "Other" },
+  { id: "streetlight", label: "Streetlight" },
+  { id: "water", label: "Water" },
+  { id: "garbage", label: "Garbage" },
+  { id: "roads", label: "Roads" },
+  { id: "drainage", label: "Drainage" },
+  { id: "electricity", label: "Electricity" },
+  { id: "encroachment", label: "Encroachment" },
+  { id: "publictoilet", label: "Public Toilet" },
+  { id: "park", label: "Park / Garden" },
+  { id: "other", label: "Other" },
 ] as const;
 
-type CategoryId = typeof CATEGORIES[number]["id"];
+type CategoryId = (typeof CATEGORIES)[number]["id"];
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -124,12 +104,36 @@ interface Coords {
   lng: number;
 }
 
-type SubmitPhase =
-  | "idle"
-  | "uploading"
-  | "saving"
-  | "success"
-  | "error";
+type SpeechRecognitionResultLike = {
+  0: {
+    transcript: string;
+  };
+};
+
+type SpeechRecognitionEventLike = {
+  results: ArrayLike<SpeechRecognitionResultLike>;
+};
+
+type SpeechRecognitionInstance = {
+  continuous: boolean;
+  interimResults: boolean;
+  lang: string;
+  onresult: ((event: SpeechRecognitionEventLike) => void) | null;
+  onerror: (() => void) | null;
+  onend: (() => void) | null;
+  start: () => void;
+  stop: () => void;
+  abort: () => void;
+};
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance;
+
+type SpeechRecognitionWindow = Window & {
+  SpeechRecognition?: SpeechRecognitionConstructor;
+  webkitSpeechRecognition?: SpeechRecognitionConstructor;
+};
+
+type SubmitPhase = "idle" | "uploading" | "saving" | "success" | "error";
 
 interface FormErrors {
   category?: string;
@@ -139,10 +143,12 @@ interface FormErrors {
 }
 
 const formSchema = z.object({
-  description: z.string()
+  description: z
+    .string()
     .min(10, "Description must be at least 10 characters.")
     .max(300, "Description is too long."),
-  locationText: z.string()
+  locationText: z
+    .string()
     .min(1, "Location is required. Please wait or enter it manually.")
     .refine((val) => val !== "Detecting your location…", {
       message: "Location is required. Please wait or enter it manually.",
@@ -172,11 +178,29 @@ function formReducer(state: FormState, action: FormAction): FormState {
     case "SAVING":
       return { ...state, phase: "saving", uploadProgress: 100 };
     case "SUCCESS":
-      return { phase: "success", uploadProgress: 100, errorMessage: null, trackingToken: action.token, duplicateIssueId: null };
+      return {
+        phase: "success",
+        uploadProgress: 100,
+        errorMessage: null,
+        trackingToken: action.token,
+        duplicateIssueId: null,
+      };
     case "ERROR":
-      return { phase: "error", uploadProgress: 0, errorMessage: action.message, trackingToken: null, duplicateIssueId: action.duplicateIssueId || null };
+      return {
+        phase: "error",
+        uploadProgress: 0,
+        errorMessage: action.message,
+        trackingToken: null,
+        duplicateIssueId: action.duplicateIssueId || null,
+      };
     case "RESET":
-      return { phase: "idle", uploadProgress: 0, errorMessage: null, trackingToken: null, duplicateIssueId: null };
+      return {
+        phase: "idle",
+        uploadProgress: 0,
+        errorMessage: null,
+        trackingToken: null,
+        duplicateIssueId: null,
+      };
     default:
       return state;
   }
@@ -202,7 +226,6 @@ function generateToken(): string {
   return `CVC-${hex}`;
 }
 
-
 /** Sanitise description: trim + collapse internal whitespace */
 function sanitise(text: string): string {
   return text.trim().replace(/\s+/g, " ");
@@ -210,36 +233,53 @@ function sanitise(text: string): string {
 
 function getDistance(lat1: number, lon1: number, lat2: number, lon2: number) {
   const R = 6371e3;
-  const φ1 = lat1 * Math.PI/180;
-  const φ2 = lat2 * Math.PI/180;
-  const Δφ = (lat2-lat1) * Math.PI/180;
-  const Δλ = (lon2-lon1) * Math.PI/180;
-  const a = Math.sin(Δφ/2) * Math.sin(Δφ/2) + Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ/2) * Math.sin(Δλ/2);
-  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+  const φ1 = (lat1 * Math.PI) / 180;
+  const φ2 = (lat2 * Math.PI) / 180;
+  const Δφ = ((lat2 - lat1) * Math.PI) / 180;
+  const Δλ = ((lon2 - lon1) * Math.PI) / 180;
+  const a =
+    Math.sin(Δφ / 2) * Math.sin(Δφ / 2) +
+    Math.cos(φ1) * Math.cos(φ2) * Math.sin(Δλ / 2) * Math.sin(Δλ / 2);
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
   return R * c;
 }
 
 function getDepartmentForCategory(category: CategoryId): string {
   switch (category) {
     case "streetlight":
-    case "electricity": return "Electrical";
+    case "electricity":
+      return "Electrical";
     case "water":
-    case "drainage": return "Water Board";
+    case "drainage":
+      return "Water Board";
     case "garbage":
-    case "publictoilet": return "Sanitation";
+    case "publictoilet":
+      return "Sanitation";
     case "roads":
-    case "encroachment": return "Public Works";
-    case "park": return "Parks & Rec";
-    default: return "";
+    case "encroachment":
+      return "Public Works";
+    case "park":
+      return "Parks & Rec";
+    default:
+      return "";
   }
 }
 
 function calculatePriority(description: string): string {
   const desc = description.toLowerCase();
-  const highPriority = ["live wire", "fire", "flood", "urgent", "accident", "danger", "hazard", "spark"];
-  if (highPriority.some(kw => desc.includes(kw))) return "high";
+  const highPriority = [
+    "live wire",
+    "fire",
+    "flood",
+    "urgent",
+    "accident",
+    "danger",
+    "hazard",
+    "spark",
+  ];
+  if (highPriority.some((kw) => desc.includes(kw))) return "high";
   const mediumPriority = ["broken", "pothole", "leak", "smell", "dead animal"];
-  if (mediumPriority.some(kw => desc.includes(kw))) return "medium";
+  if (mediumPriority.some((kw) => desc.includes(kw))) return "medium";
   return "low";
 }
 
@@ -289,12 +329,12 @@ function FieldError({ id, message }: FieldErrorProps) {
   );
 }
 
-function StructuredLocationInput({ 
-  onChange, 
+function StructuredLocationInput({
+  onChange,
   disabled,
-  error
-}: { 
-  onChange: (val: string) => void; 
+  error,
+}: {
+  onChange: (val: string) => void;
   disabled?: boolean;
   error?: string;
 }) {
@@ -309,26 +349,39 @@ function StructuredLocationInput({
 
   return (
     <div className="flex flex-col gap-3">
-      <input 
-        id="street" name="street" aria-label="Street or Area Name"
-        type="text" placeholder="Street / Area Name *" required 
-        value={street} onChange={e => setStreet(e.target.value)}
+      <input
+        id="street"
+        name="street"
+        aria-label="Street or Area Name"
+        type="text"
+        placeholder="Street / Area Name *"
+        required
+        value={street}
+        onChange={(e) => setStreet(e.target.value)}
         disabled={disabled}
         className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50"
         style={{ border: error ? "1px solid #dc2626" : "1px solid var(--border)" }}
       />
       <div className="flex gap-3">
-        <input 
-          id="landmark" name="landmark" aria-label="Landmark (optional)"
-          type="text" placeholder="Landmark (optional)" 
-          value={landmark} onChange={e => setLandmark(e.target.value)}
+        <input
+          id="landmark"
+          name="landmark"
+          aria-label="Landmark (optional)"
+          type="text"
+          placeholder="Landmark (optional)"
+          value={landmark}
+          onChange={(e) => setLandmark(e.target.value)}
           disabled={disabled}
           className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50 border border-[color:var(--border)] focus:border-[color:var(--primary)]"
         />
-        <input 
-          id="pincode" name="pincode" aria-label="Pincode"
-          type="text" placeholder="Pincode" 
-          value={pincode} onChange={e => setPincode(e.target.value)}
+        <input
+          id="pincode"
+          name="pincode"
+          aria-label="Pincode"
+          type="text"
+          placeholder="Pincode"
+          value={pincode}
+          onChange={(e) => setPincode(e.target.value)}
           disabled={disabled}
           className="w-1/2 px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all disabled:opacity-50 border border-[color:var(--border)] focus:border-[color:var(--primary)]"
         />
@@ -342,6 +395,8 @@ function StructuredLocationInput({
 export function ComplaintForm() {
   const { t } = useTranslation();
   const haptics = useHaptics();
+  const recaptchaSiteKey = import.meta.env.VITE_RECAPTCHA_SITE_KEY as string | undefined;
+  const showSpeechInput = import.meta.env.VITE_ENABLE_SPEECH_INPUT === "true";
   // ── Field state ─────────────────────────────────────────────────────────────
   const [category, setCategory] = useState<CategoryId>("streetlight");
   const [locationText, setLocationText] = useState("");
@@ -354,7 +409,7 @@ export function ComplaintForm() {
   const [dragActive, setDragActive] = useState(false);
   const [coords, setCoords] = useState<Coords | null>(null);
   const [fieldErrors, setFieldErrors] = useState<FormErrors>({});
-  
+
   const [captchaValue, setCaptchaValue] = useState<string | null>(null);
   const [rateLimitState, setRateLimitState] = useState({ allowed: true, remaining: 3 });
 
@@ -378,8 +433,8 @@ export function ComplaintForm() {
   // ── Speech recognition ────────────────────────────────────────────────────
   const [isListening, setIsListening] = useState(false);
   const [speechSupported, setSpeechSupported] = useState(false);
-  const recognitionRef = useRef<any>(null);
-  const baseTextRef = useRef("");            // text snapshot before current dictation session
+  const recognitionRef = useRef<SpeechRecognitionInstance | null>(null);
+  const baseTextRef = useRef(""); // text snapshot before current dictation session
 
   // ── Refs ──────────────────────────────────────────────────────────────────
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -394,17 +449,16 @@ export function ComplaintForm() {
       haptics.success();
     },
     onError: (message) => {
-      setFieldErrors(prev => ({ ...prev, location: message }));
+      setFieldErrors((prev) => ({ ...prev, location: message }));
       haptics.error();
-    }
+    },
   });
 
   // ─── Speech recognition setup ────────────────────────────────────────────────
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const SR =
-      (window as any).SpeechRecognition ||
-      (window as any).webkitSpeechRecognition;
+    const speechWindow = window as SpeechRecognitionWindow;
+    const SR = speechWindow.SpeechRecognition || speechWindow.webkitSpeechRecognition;
     if (!SR) return;
 
     setSpeechSupported(true);
@@ -413,9 +467,9 @@ export function ComplaintForm() {
     rec.interimResults = true;
     rec.lang = "en-IN";
 
-    rec.onresult = (event: any) => {
-      const transcript: string = Array.from(event.results as any[])
-        .map((r: any) => r[0].transcript)
+    rec.onresult = (event) => {
+      const transcript = Array.from(event.results)
+        .map((result) => result[0].transcript)
         .join("");
       const full = baseTextRef.current + transcript;
       setDescription(full.slice(0, DESCRIPTION_MAX));
@@ -430,7 +484,11 @@ export function ComplaintForm() {
       rec.onresult = null;
       rec.onerror = null;
       rec.onend = null;
-      try { rec.abort(); } catch { /* ignore */ }
+      try {
+        rec.abort();
+      } catch {
+        /* ignore */
+      }
     };
   }, []);
 
@@ -456,7 +514,7 @@ export function ComplaintForm() {
     if (!el) return;
 
     const focusable = el.querySelectorAll<HTMLElement>(
-      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
     );
     const first = focusable[0];
     const last = focusable[focusable.length - 1];
@@ -464,12 +522,21 @@ export function ComplaintForm() {
     first?.focus();
 
     const trap = (e: KeyboardEvent) => {
-      if (e.key === "Escape") { setMapOpen(false); return; }
+      if (e.key === "Escape") {
+        setMapOpen(false);
+        return;
+      }
       if (e.key !== "Tab") return;
       if (e.shiftKey) {
-        if (document.activeElement === first) { e.preventDefault(); last?.focus(); }
+        if (document.activeElement === first) {
+          e.preventDefault();
+          last?.focus();
+        }
       } else {
-        if (document.activeElement === last) { e.preventDefault(); first?.focus(); }
+        if (document.activeElement === last) {
+          e.preventDefault();
+          first?.focus();
+        }
       }
     };
 
@@ -517,7 +584,10 @@ export function ComplaintForm() {
   }, []);
 
   const handleRemoveFile = useCallback(() => {
-    setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setSelectedFile(null);
     if (fileInputRef.current) fileInputRef.current.value = "";
   }, []);
@@ -528,12 +598,15 @@ export function ComplaintForm() {
     setDragActive(e.type === "dragenter" || e.type === "dragover");
   }, []);
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-    handleFileSelect(e.dataTransfer.files?.[0] ?? null);
-  }, [handleFileSelect]);
+  const handleDrop = useCallback(
+    (e: React.DragEvent) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragActive(false);
+      handleFileSelect(e.dataTransfer.files?.[0] ?? null);
+    },
+    [handleFileSelect],
+  );
 
   const handleConfirmMapLocation = useCallback(async () => {
     if (!tempCoords) return;
@@ -557,7 +630,9 @@ export function ComplaintForm() {
       await navigator.clipboard.writeText(formState.trackingToken);
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    } catch { /* Clipboard API unavailable — silent */ }
+    } catch {
+      /* Clipboard API unavailable — silent */
+    }
   }, [formState.trackingToken]);
 
   // ─── Validation ──────────────────────────────────────────────────────────────
@@ -565,7 +640,7 @@ export function ComplaintForm() {
   const validate = useCallback((): boolean => {
     const data = { description: sanitise(description), locationText };
     const result = formSchema.safeParse(data);
-    
+
     if (!result.success) {
       const formatted = result.error.format();
       setFieldErrors({
@@ -581,129 +656,141 @@ export function ComplaintForm() {
 
   // ─── Submit ──────────────────────────────────────────────────────────────────
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (isSubmitting) return;
-    if (!validate()) return;
+  const handleSubmit = useCallback(
+    async (e: React.FormEvent) => {
+      e.preventDefault();
+      if (isSubmitting) return;
+      if (!validate()) return;
 
-    if (!captchaValue) {
-      dispatch({ type: "ERROR", message: "Please verify that you are human using the CAPTCHA." });
-      setTimeout(() => dispatch({ type: "RESET" }), 5000);
-      return;
-    }
+      if (!captchaValue) {
+        dispatch({ type: "ERROR", message: "Please verify that you are human using the CAPTCHA." });
+        setTimeout(() => dispatch({ type: "RESET" }), 5000);
+        return;
+      }
 
-    const { allowed } = checkRateLimit();
-    if (!allowed) {
-      dispatch({ type: "ERROR", message: "Wow, what a Civic Hero! You have reached the limit of 24 reports for today." });
-      setRateLimitState({ allowed: false, remaining: 0 });
-      return;
-    }
+      const { allowed } = checkRateLimit();
+      if (!allowed) {
+        dispatch({
+          type: "ERROR",
+          message: "Wow, what a Civic Hero! You have reached the limit of 24 reports for today.",
+        });
+        setRateLimitState({ allowed: false, remaining: 0 });
+        return;
+      }
 
-    if (coords && category !== "other") {
+      dispatch({ type: "UPLOAD_PROGRESS", payload: 0 });
+
       try {
-        const q = query(
-          collection(db, "complaints"),
-          where("category", "==", category),
-          where("status", "==", "open")
-        );
-        const snapshot = await getDocs(q);
-        let duplicateId: string | null = null;
-        for (const doc of snapshot.docs) {
-          const data = doc.data();
-          if (data.coordinates) {
-            const dist = getDistance(coords.lat, coords.lng, data.coordinates.lat, data.coordinates.lng);
-            if (dist < 50) { // 50 meters
-              duplicateId = doc.id;
-              break;
+        let photoBase64: string | null = null;
+
+        if (selectedFile) {
+          dispatch({ type: "UPLOAD_PROGRESS", payload: 10 });
+          const options = {
+            maxSizeMB: 1.5,
+            maxWidthOrHeight: 1920,
+            useWebWorker: true,
+            exifOrientation: 1,
+            onProgress: (progress: number) => {
+              dispatch({ type: "UPLOAD_PROGRESS", payload: 10 + Math.round(progress * 0.4) });
             }
-          }
+          };
+          
+          const compressedFile = await imageCompression(selectedFile, options);
+          dispatch({ type: "UPLOAD_PROGRESS", payload: 50 });
+          
+          photoBase64 = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => {
+              dispatch({ type: "UPLOAD_PROGRESS", payload: 90 });
+              resolve(reader.result as string);
+            };
+            reader.onerror = () => reject(new Error("Failed to read image file"));
+            reader.readAsDataURL(compressedFile);
+          });
         }
-        if (duplicateId) {
-          dispatch({ 
-            type: "ERROR", 
-            message: "A similar issue has already been reported nearby.",
-            duplicateIssueId: duplicateId
+
+        dispatch({ type: "SAVING" });
+
+        const result = await submitComplaint({
+          data: {
+            category,
+            location: locationText,
+            coordinates: coords ?? null,
+            description,
+            photoBase64,
+            isAnonymous,
+            captchaToken: captchaValue,
+            clientId: getRateLimitClientId(),
+          },
+        });
+
+        if (!result.ok) {
+          dispatch({
+            type: "ERROR",
+            message: result.message,
+            duplicateIssueId: result.duplicateIssueId,
           });
           setTimeout(() => dispatch({ type: "RESET" }), 5000);
           return;
         }
+
+        try {
+          const stored = localStorage.getItem("localVoice_my_reports");
+          const myReports = stored ? JSON.parse(stored) : [];
+          if (!myReports.includes(result.id)) {
+            myReports.push(result.id);
+          }
+          localStorage.setItem("localVoice_my_reports", JSON.stringify(myReports));
+        } catch (e) {
+          console.error("Failed to save to local storage", e);
+        }
+
+        recordReportSubmission();
+        setRateLimitState(checkRateLimit());
+        dispatch({ type: "SUCCESS", token: result.token });
+        haptics.success();
       } catch (err) {
-        // fail open if duplicate check fails
-      }
-    }
+        console.error("[ComplaintForm] Submit error:", err);
 
-    dispatch({ type: "UPLOAD_PROGRESS", payload: 0 });
-
-    try {
-      let photoURL: string | null = null;
-
-      if (selectedFile) {
-        photoURL = await uploadImage(selectedFile, "temp", (progress) => {
-          dispatch({ type: "UPLOAD_PROGRESS", payload: Math.round(progress * 0.9) });
-        });
-      }
-
-      dispatch({ type: "SAVING" });
-
-      const token = generateToken();
-
-      const docRef = await addDoc(collection(db, "complaints"), {
-        category,
-        location: locationText,
-        coordinates: coords ?? null,
-        description: sanitise(description),
-        photoURL: photoURL ?? null,
-        timestamp: serverTimestamp(),
-        status: "open",
-        priority: calculatePriority(description),
-        department: getDepartmentForCategory(category),
-        schemaVersion: 2,
-        token,
-        isAnonymous,
-      });
-
-      try {
-        const stored = localStorage.getItem('localVoice_my_reports');
-        const myReports = stored ? JSON.parse(stored) : [];
-        if (!myReports.includes(docRef.id)) {
-          myReports.push(docRef.id);
+        let message = "Failed to submit. Please check your connection and try again.";
+        if (err instanceof ImageUploadError) {
+          message = err.message;
+        } else if (err instanceof Error) {
+          if (err.message.includes("permission-denied")) {
+            message = "Permission denied. Please refresh and try again.";
+          } else if (err.message.includes("quota")) {
+            message = "Storage quota exceeded. Please contact support.";
+          }
         }
-        localStorage.setItem('localVoice_my_reports', JSON.stringify(myReports));
-      } catch (e) {
-        console.error("Failed to save to local storage", e);
+
+        dispatch({ type: "ERROR", message });
+        haptics.error();
+        // Auto-clear error after 5 s so the button recovers
+        setTimeout(() => dispatch({ type: "RESET" }), 5000);
       }
-
-      recordReportSubmission();
-      setRateLimitState(checkRateLimit());
-      dispatch({ type: "SUCCESS", token });
-      haptics.success();
-      
-    } catch (err) {
-      console.error("[ComplaintForm] Submit error:", err);
-
-      let message = "Failed to submit. Please check your connection and try again.";
-      if (err instanceof ImageUploadError) {
-        message = err.message;
-      } else if (err instanceof Error) {
-        if (err.message.includes("permission-denied")) {
-          message = "Permission denied. Please refresh and try again.";
-        } else if (err.message.includes("quota")) {
-          message = "Storage quota exceeded. Please contact support.";
-        }
-      }
-
-      dispatch({ type: "ERROR", message });
-      haptics.error();
-      // Auto-clear error after 5 s so the button recovers
-      setTimeout(() => dispatch({ type: "RESET" }), 5000);
-    }
-  }, [isSubmitting, validate, selectedFile, category, locationText, coords, description, captchaValue]);
+    },
+    [
+      isSubmitting,
+      validate,
+      selectedFile,
+      category,
+      locationText,
+      coords,
+      description,
+      captchaValue,
+      isAnonymous,
+      haptics,
+    ],
+  );
 
   const handleReset = useCallback(() => {
     dispatch({ type: "RESET" });
     setDescription("");
     setSelectedFile(null);
-    setPreviewUrl((prev) => { if (prev) URL.revokeObjectURL(prev); return null; });
+    setPreviewUrl((prev) => {
+      if (prev) URL.revokeObjectURL(prev);
+      return null;
+    });
     setFieldErrors({});
     setCopied(false);
   }, []);
@@ -718,8 +805,8 @@ export function ComplaintForm() {
 
   const submitLabel = useMemo(() => {
     if (formState.phase === "uploading") return "Uploading…";
-    if (formState.phase === "saving")    return "Saving…";
-    if (formState.phase === "error")     return "Failed — try again";
+    if (formState.phase === "saving") return "Saving…";
+    if (formState.phase === "error") return "Failed — try again";
     return "Submit report";
   }, [formState.phase]);
 
@@ -737,7 +824,6 @@ export function ComplaintForm() {
         className="bg-white rounded-[24px] p-5 sm:p-8 w-full"
         style={{ boxShadow: "var(--shadow-xl)" }}
       >
-
         {/* ── Category ────────────────────────────────────────────────────── */}
         <fieldset className="mb-6 border-0 p-0 m-0">
           <legend className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
@@ -778,7 +864,11 @@ export function ComplaintForm() {
           </legend>
 
           {locationEditable ? (
-            <div className="flex flex-col gap-4" id="location-input" aria-describedby={fieldErrors.location ? "location-error" : undefined}>
+            <div
+              className="flex flex-col gap-4"
+              id="location-input"
+              aria-describedby={fieldErrors.location ? "location-error" : undefined}
+            >
               <div className="flex gap-2 w-full">
                 <button
                   type="button"
@@ -803,7 +893,7 @@ export function ComplaintForm() {
                     </>
                   )}
                 </button>
-                
+
                 {isDetecting && (
                   <button
                     type="button"
@@ -815,16 +905,18 @@ export function ComplaintForm() {
                   </button>
                 )}
               </div>
-              
+
               <div className="flex items-center gap-3">
                 <hr className="flex-1 border-[color:var(--border)]" />
-                <span className="text-[10px] font-bold text-[color:var(--text-muted)] tracking-wider">OR ENTER MANUALLY</span>
+                <span className="text-[10px] font-bold text-[color:var(--text-muted)] tracking-wider">
+                  OR ENTER MANUALLY
+                </span>
                 <hr className="flex-1 border-[color:var(--border)]" />
               </div>
 
-              <StructuredLocationInput 
-                onChange={setLocationText} 
-                disabled={isSubmitting} 
+              <StructuredLocationInput
+                onChange={setLocationText}
+                disabled={isSubmitting}
                 error={fieldErrors.location}
               />
             </div>
@@ -847,7 +939,11 @@ export function ComplaintForm() {
                 {locationText}
               </span>
               {!locationDetected && (
-                <Loader2 size={14} className="animate-spin text-[color:var(--primary)] shrink-0 mt-0.5" aria-label="Detecting location" />
+                <Loader2
+                  size={14}
+                  className="animate-spin text-[color:var(--primary)] shrink-0 mt-0.5"
+                  aria-label="Detecting location"
+                />
               )}
             </div>
           )}
@@ -860,11 +956,13 @@ export function ComplaintForm() {
                 <span
                   className="inline-flex items-center gap-1 px-2 py-1 rounded-full text-[10px] font-bold"
                   style={{
-                    background: accuracy <= 30 ? '#dcfce7' : accuracy <= 100 ? '#fef3c7' : '#fee2e2',
-                    color: accuracy <= 30 ? '#166534' : accuracy <= 100 ? '#92400e' : '#991b1b',
+                    background:
+                      accuracy <= 30 ? "#dcfce7" : accuracy <= 100 ? "#fef3c7" : "#fee2e2",
+                    color: accuracy <= 30 ? "#166534" : accuracy <= 100 ? "#92400e" : "#991b1b",
                   }}
                 >
-                  📍 ±{accuracy}m {accuracy <= 30 ? 'GPS' : accuracy <= 100 ? 'Good' : 'Approximate'}
+                  📍 ±{accuracy}m{" "}
+                  {accuracy <= 30 ? "GPS" : accuracy <= 100 ? "Good" : "Approximate"}
                 </span>
               )}
               <button
@@ -874,7 +972,9 @@ export function ComplaintForm() {
               >
                 {locationEditable ? "Use detected location" : "Edit manually"}
               </button>
-              <span aria-hidden="true" className="text-[color:var(--text-muted)]">·</span>
+              <span aria-hidden="true" className="text-[color:var(--text-muted)]">
+                ·
+              </span>
               <button
                 type="button"
                 onClick={() => {
@@ -900,8 +1000,7 @@ export function ComplaintForm() {
               Describe the issue
             </label>
 
-            {/* Disabled per user request until we enhance the feature */}
-            {false && speechSupported && (
+            {showSpeechInput && speechSupported && (
               <button
                 type="button"
                 onClick={toggleListening}
@@ -954,7 +1053,9 @@ export function ComplaintForm() {
               e.currentTarget.style.boxShadow = "0 0 0 3px rgba(27,79,216,0.12)";
             }}
             onBlur={(e) => {
-              e.currentTarget.style.borderColor = fieldErrors.description ? "#dc2626" : "var(--border)";
+              e.currentTarget.style.borderColor = fieldErrors.description
+                ? "#dc2626"
+                : "var(--border)";
               e.currentTarget.style.boxShadow = "none";
             }}
           />
@@ -984,7 +1085,10 @@ export function ComplaintForm() {
                 alt="Preview of the selected photo"
                 className="w-full h-48 object-cover"
               />
-              <div className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors" aria-hidden="true" />
+              <div
+                className="absolute inset-0 bg-black/0 group-hover:bg-black/10 transition-colors"
+                aria-hidden="true"
+              />
               <button
                 type="button"
                 onClick={handleRemoveFile}
@@ -1015,7 +1119,7 @@ export function ComplaintForm() {
               tabIndex={0}
               aria-label={`Upload a photo. Maximum ${IMAGE_CONFIG.MAX_SIZE_MB}MB, formats: ${IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(", ").toUpperCase()}`}
               aria-describedby={fieldErrors.photo ? "photo-error" : undefined}
-              className={`flex flex-col items-center justify-center gap-2 py-7 rounded-[12px] cursor-pointer transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2 ${dragActive ? 'scale-[1.02] shadow-[0_0_24px_rgba(27,79,216,0.12)]' : ''}`}
+              className={`flex flex-col items-center justify-center gap-2 py-7 rounded-[12px] cursor-pointer transition-all duration-300 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2 ${dragActive ? "scale-[1.02] shadow-[0_0_24px_rgba(27,79,216,0.12)]" : ""}`}
               style={{
                 background: dragActive ? "rgba(27,79,216,0.04)" : "var(--surface-2)",
                 border: dragActive
@@ -1028,7 +1132,8 @@ export function ComplaintForm() {
                 Tap to take a photo or upload
               </span>
               <span className="text-xs text-[color:var(--text-muted)]">
-                Up to {IMAGE_CONFIG.MAX_SIZE_MB}MB · {IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(" / ").toUpperCase()}
+                Up to {IMAGE_CONFIG.MAX_SIZE_MB}MB ·{" "}
+                {IMAGE_CONFIG.ALLOWED_EXTENSIONS.join(" / ").toUpperCase()}
               </span>
             </div>
           )}
@@ -1089,7 +1194,7 @@ export function ComplaintForm() {
               <span className="font-semibold">{formState.errorMessage}</span>
               {formState.duplicateIssueId && (
                 <div className="mt-3">
-                  <a 
+                  <a
                     href={`/map?issueId=${formState.duplicateIssueId}`}
                     className="inline-flex items-center justify-center bg-red-100 hover:bg-red-200 text-red-800 px-4 py-2 rounded-md font-medium transition-colors"
                   >
@@ -1104,10 +1209,10 @@ export function ComplaintForm() {
 
         {/* ── Success / Submit ─────────────────────────────────────────────── */}
         {formState.phase === "success" && formState.trackingToken ? (
-          <CivicHeroCard 
-            token={formState.trackingToken} 
-            category={category} 
-            location={locationText} 
+          <CivicHeroCard
+            token={formState.trackingToken}
+            category={category}
+            location={locationText}
             onReset={handleReset}
           />
         ) : (
@@ -1117,7 +1222,11 @@ export function ComplaintForm() {
                 <AlertCircle size={16} className="text-indigo-700 shrink-0 mt-0.5" />
                 <div className="text-sm text-indigo-700">
                   <p className="font-bold">Wow, what a Civic Hero!</p>
-                  <p className="mt-1">Thanks for saving this city from issues and thanks for your survey today and letting us know! You've reached the maximum limit of 24 reports for today. Get some rest and come back tomorrow!</p>
+                  <p className="mt-1">
+                    Thanks for saving this city from issues and thanks for your survey today and
+                    letting us know! You've reached the maximum limit of 24 reports for today. Get
+                    some rest and come back tomorrow!
+                  </p>
                 </div>
               </div>
             )}
@@ -1127,38 +1236,62 @@ export function ComplaintForm() {
                 <AlertCircle size={16} className="text-amber-700 shrink-0 mt-0.5" />
                 <div className="text-sm text-amber-700">
                   <p className="font-bold">You are reaching your limit!</p>
-                  <p className="mt-1">You have {rateLimitState.remaining} requests left today. Thanks for being so active in your community!</p>
+                  <p className="mt-1">
+                    You have {rateLimitState.remaining} requests left today. Thanks for being so
+                    active in your community!
+                  </p>
                 </div>
               </div>
             )}
-            
-            {rateLimitState.allowed && (
-              <div className="flex justify-center mb-2">
-                <ReCAPTCHA
-                  sitekey={import.meta.env.VITE_RECAPTCHA_SITE_KEY || "6LeIxAcTAAAAAJcZVRqyHh71UMIEGNQ_MXjiZKhI"}
-                  onChange={(val) => setCaptchaValue(val)}
-                  theme="light"
-                />
+
+            {rateLimitState.allowed && recaptchaSiteKey && (
+              <div className="mt-8 flex justify-center">
+                <ClientOnly>
+                  <ReCAPTCHA
+                    sitekey={recaptchaSiteKey}
+                    onChange={(token) => setCaptchaValue(token)}
+                    theme="light"
+                  />
+                </ClientOnly>
               </div>
             )}
-            
+
+            {rateLimitState.allowed && !recaptchaSiteKey && (
+              <div className="p-4 rounded-[12px] bg-red-50 border border-red-200 flex items-start gap-2.5 mb-2">
+                <AlertCircle size={16} className="text-red-700 shrink-0 mt-0.5" />
+                <div className="text-sm text-red-700">
+                  <p className="font-bold">Reporting is temporarily unavailable.</p>
+                  <p className="mt-1">The reCAPTCHA site key is not configured.</p>
+                </div>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={isSubmitting || !rateLimitState.allowed}
+              disabled={isSubmitting || !rateLimitState.allowed || !recaptchaSiteKey}
               aria-busy={isSubmitting}
               className="relative overflow-hidden w-full inline-flex items-center justify-center gap-2 h-12 rounded-[10px] font-semibold text-white transition-all duration-200 active:scale-[0.98] disabled:active:scale-100 disabled:opacity-80 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
               style={{
-                background: formState.phase === "error" || !rateLimitState.allowed ? "#dc2626" : "var(--primary)",
-                boxShadow: (!isSubmitting && rateLimitState.allowed) ? "0 4px 16px rgba(27,79,216,0.25)" : "none",
+                background:
+                  formState.phase === "error" || !rateLimitState.allowed || !recaptchaSiteKey
+                    ? "#dc2626"
+                    : "var(--primary)",
+                boxShadow:
+                  !isSubmitting && rateLimitState.allowed && recaptchaSiteKey
+                    ? "0 4px 16px rgba(27,79,216,0.25)"
+                    : "none",
               }}
             >
               {isSubmitting && (
                 <div className="absolute inset-0 -translate-x-full animate-[shimmer_1.5s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent" />
               )}
-              {isSubmitting
-                ? <><Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}</>
-                : submitLabel
-              }
+              {isSubmitting ? (
+                <>
+                  <Loader2 size={17} className="animate-spin" aria-hidden="true" /> {submitLabel}
+                </>
+              ) : (
+                submitLabel
+              )}
             </button>
           </div>
         )}
@@ -1193,33 +1326,20 @@ export function ComplaintForm() {
 
             {/* Map */}
             <div className="flex-1 relative min-h-0 bg-slate-50">
-              <MapContainer
-                center={[tempCoords.lat, tempCoords.lng]}
-                zoom={17}
-                style={{ width: "100%", height: "100%" }}
-                zoomControl={true}
-              >
-                <TileLayer
-                  attribution='&copy; <a href="https://openstreetmap.org" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>'
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                />
-                <Marker
-                  position={[tempCoords.lat, tempCoords.lng]}
-                  draggable
-                  eventHandlers={{
-                    dragend: (e) => {
-                      const { lat, lng } = e.target.getLatLng();
-                      setTempCoords({ lat, lng });
-                    },
-                  }}
-                />
-              </MapContainer>
+              <ClientOnly>
+                <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-[color:var(--primary)]" size={32} /></div>}>
+                  <ComplaintMapLeaflet locationCoords={tempCoords} setTempCoords={setTempCoords} />
+                </Suspense>
+              </ClientOnly>
 
               {/* Confirm overlay */}
               <div className="absolute bottom-5 left-1/2 -translate-x-1/2 w-[90%] sm:w-80 z-[400] pointer-events-none">
                 <div
                   className="bg-white rounded-[16px] p-4 pointer-events-auto"
-                  style={{ boxShadow: "0 4px 24px rgba(0,0,0,0.15)", border: "1px solid var(--border)" }}
+                  style={{
+                    boxShadow: "0 4px 24px rgba(0,0,0,0.15)",
+                    border: "1px solid var(--border)",
+                  }}
                 >
                   <p className="text-xs text-[color:var(--text-secondary)] text-center mb-3">
                     Drag the pin to the exact location of the issue.
@@ -1230,10 +1350,14 @@ export function ComplaintForm() {
                     disabled={mapGeocoding}
                     className="w-full flex items-center justify-center gap-2 py-3 rounded-[10px] bg-[color:var(--primary)] text-white font-semibold text-sm transition-all disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--primary)] focus-visible:ring-offset-2"
                   >
-                    {mapGeocoding
-                      ? <><Loader2 size={16} className="animate-spin" aria-hidden="true" /> Updating location…</>
-                      : "Confirm location"
-                    }
+                    {mapGeocoding ? (
+                      <>
+                        <Loader2 size={16} className="animate-spin" aria-hidden="true" /> Updating
+                        location…
+                      </>
+                    ) : (
+                      "Confirm location"
+                    )}
                   </button>
                 </div>
               </div>

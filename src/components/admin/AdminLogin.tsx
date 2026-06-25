@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
-import { signInWithEmailAndPassword, sendSignInLinkToEmail } from 'firebase/auth';
-import { auth } from '../../lib/firebase';
-import { Loader2, Lock } from 'lucide-react';
+import React, { useState } from "react";
+import { signInWithEmailAndPassword, sendSignInLinkToEmail } from "firebase/auth";
+import { auth } from "../../lib/firebase";
+import { Loader2, Lock } from "lucide-react";
+
+function getAuthError(error: unknown) {
+  if (error && typeof error === "object") {
+    return error as { code?: string; message?: string };
+  }
+  return { message: String(error) };
+}
 
 export function AdminLogin() {
   const [username, setUsername] = useState("");
@@ -14,25 +21,34 @@ export function AdminLogin() {
     e.preventDefault();
     setError("");
     setLoading(true);
-    
-    const domain = (import.meta.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "");
+
+    const domain = (import.meta.env.VITE_APP_NAME || "LocalVoice")
+      .toLowerCase()
+      .replace(/\s+/g, "");
     // Support both short usernames (e.g. 'electrical') and full emails (e.g. 'electrical@localvoice.admin')
     const adminEmail = username.includes("@") ? username : `${username}@${domain}.admin`;
-    
+
     try {
       await signInWithEmailAndPassword(auth, adminEmail, password);
-    } catch (err: any) {
+    } catch (err) {
+      const authError = getAuthError(err);
       // If the superadmin account was deleted from Firebase Auth, recreate it on the fly
-      if (username === import.meta.env.VITE_ADMIN_USERNAME && (err.code === "auth/invalid-credential" || err.code === "auth/user-not-found")) {
+      if (
+        username === import.meta.env.VITE_ADMIN_USERNAME &&
+        (authError.code === "auth/invalid-credential" || authError.code === "auth/user-not-found")
+      ) {
         try {
           const { createUserWithEmailAndPassword } = await import("firebase/auth");
           await createUserWithEmailAndPassword(auth, adminEmail, password);
           return;
-        } catch (createErr: any) {
-          if (createErr.code === "auth/email-already-in-use") {
-             setError("Invalid credentials. If you forgot your password, please use the Magic Link below.");
+        } catch (createErr) {
+          const createError = getAuthError(createErr);
+          if (createError.code === "auth/email-already-in-use") {
+            setError(
+              "Invalid credentials. If you forgot your password, please use the Magic Link below.",
+            );
           } else {
-             setError("Error initializing superadmin: " + createErr.message);
+            setError("Error initializing superadmin: " + (createError.message || "Unknown error"));
           }
         }
       } else {
@@ -47,7 +63,7 @@ export function AdminLogin() {
     setError("");
     setLoading(true);
     const email = import.meta.env.VITE_ADMIN_EMAIL;
-    
+
     if (!email) {
       setError("Admin email not configured in .env.local");
       setLoading(false);
@@ -62,8 +78,9 @@ export function AdminLogin() {
       await sendSignInLinkToEmail(auth, email, actionCodeSettings);
       window.localStorage.setItem("emailForSignIn", email);
       setLinkSent(true);
-    } catch (err: any) {
-      setError("Failed to send magic link: " + err.message);
+    } catch (err) {
+      const authError = getAuthError(err);
+      setError("Failed to send magic link: " + (authError.message || "Unknown error"));
     } finally {
       setLoading(false);
     }
@@ -123,7 +140,9 @@ export function AdminLogin() {
 
         <div className="mt-6 flex items-center justify-between">
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
-          <span className="text-xs text-center text-gray-500 uppercase font-semibold tracking-wider">Or</span>
+          <span className="text-xs text-center text-gray-500 uppercase font-semibold tracking-wider">
+            Or
+          </span>
           <span className="border-b border-gray-200 w-1/5 lg:w-1/4"></span>
         </div>
 

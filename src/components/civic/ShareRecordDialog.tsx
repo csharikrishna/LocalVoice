@@ -34,7 +34,13 @@ interface ShareRecordDialogProps {
   location: string;
 }
 
-export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }: ShareRecordDialogProps) => {
+export const ShareRecordDialog = ({
+  isOpen,
+  onClose,
+  token,
+  category,
+  location,
+}: ShareRecordDialogProps) => {
   const [copied, setCopied] = useState(false);
   const [showQr, setShowQr] = useState(false);
 
@@ -57,7 +63,7 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
         backgroundColor: "#ffffff",
         pixelRatio: 2,
         skipFonts: true,
-        filter: (node) => (node as HTMLElement).id !== "scanner-line"
+        filter: (node) => (node as HTMLElement).id !== "scanner-line",
       });
     } catch (err) {
       return null;
@@ -70,7 +76,7 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
       if (!blob) return false;
       await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
       toast.success("Image copied! 📸", {
-        description: "You can now hit 'Paste' (Ctrl+V) in the app to attach the photo!"
+        description: "You can now hit 'Paste' (Ctrl+V) in the app to attach the photo!",
       });
       return true;
     } catch (err) {
@@ -95,7 +101,11 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
           url: shareContent.url,
         };
 
-        if (filesArray.length > 0 && navigator.canShare && navigator.canShare({ files: filesArray })) {
+        if (
+          filesArray.length > 0 &&
+          navigator.canShare &&
+          navigator.canShare({ files: filesArray })
+        ) {
           shareData.files = filesArray;
         }
 
@@ -137,22 +147,60 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
       // 2. Open the URL in a new window/tab after the clipboard is successfully written to
       window.open(urls[platform], "_blank", "noopener,noreferrer,width=600,height=700");
     },
-    [shareContent]
+    [shareContent],
   );
 
   const handleInstagram = useCallback(async () => {
     navigator.clipboard.writeText(shareContent.url);
     await copyImageToClipboard();
-    alert("Image & Link copied! Paste the image into your Instagram Story or DM, and add the link!");
+    alert(
+      "Image & Link copied! Paste the image into your Instagram Story or DM, and add the link!",
+    );
   }, [shareContent.url]);
 
   const socialButtons = [
-    { id: "twitter", name: "Twitter", icon: <Twitter className="w-5 h-5" />, colorClass: "hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]", action: () => handleShare("twitter") },
-    { id: "facebook", name: "Facebook", icon: <Facebook className="w-5 h-5" />, colorClass: "hover:bg-[#1877F2]/10 hover:text-[#1877F2]", action: () => handleShare("facebook") },
-    { id: "whatsapp", name: "WhatsApp", icon: <MessageCircle className="w-5 h-5" />, colorClass: "hover:bg-[#25D366]/10 hover:text-[#25D366]", action: () => handleShare("whatsapp") },
-    { id: "telegram", name: "Telegram", icon: <Send className="w-5 h-5" />, colorClass: "hover:bg-[#0088cc]/10 hover:text-[#0088cc]", action: () => handleShare("telegram") },
-    { id: "linkedin", name: "LinkedIn", icon: <Linkedin className="w-5 h-5" />, colorClass: "hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]", action: () => handleShare("linkedin") },
-    { id: "instagram", name: "Instagram", icon: <Instagram className="w-5 h-5" />, colorClass: "hover:bg-[#E1306C]/10 hover:text-[#E1306C]", action: handleInstagram },
+    {
+      id: "twitter",
+      name: "Twitter",
+      icon: <Twitter className="w-5 h-5" />,
+      colorClass: "hover:bg-[#1DA1F2]/10 hover:text-[#1DA1F2]",
+      action: () => handleShare("twitter"),
+    },
+    {
+      id: "facebook",
+      name: "Facebook",
+      icon: <Facebook className="w-5 h-5" />,
+      colorClass: "hover:bg-[#1877F2]/10 hover:text-[#1877F2]",
+      action: () => handleShare("facebook"),
+    },
+    {
+      id: "whatsapp",
+      name: "WhatsApp",
+      icon: <MessageCircle className="w-5 h-5" />,
+      colorClass: "hover:bg-[#25D366]/10 hover:text-[#25D366]",
+      action: () => handleShare("whatsapp"),
+    },
+    {
+      id: "telegram",
+      name: "Telegram",
+      icon: <Send className="w-5 h-5" />,
+      colorClass: "hover:bg-[#0088cc]/10 hover:text-[#0088cc]",
+      action: () => handleShare("telegram"),
+    },
+    {
+      id: "linkedin",
+      name: "LinkedIn",
+      icon: <Linkedin className="w-5 h-5" />,
+      colorClass: "hover:bg-[#0A66C2]/10 hover:text-[#0A66C2]",
+      action: () => handleShare("linkedin"),
+    },
+    {
+      id: "instagram",
+      name: "Instagram",
+      icon: <Instagram className="w-5 h-5" />,
+      colorClass: "hover:bg-[#E1306C]/10 hover:text-[#E1306C]",
+      action: handleInstagram,
+    },
     {
       id: "reddit",
       name: "Reddit",
@@ -183,7 +231,6 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
 
         <div className="px-6 pb-6">
           <div className="space-y-6 pt-2 animate-in fade-in slide-in-from-bottom-4 duration-300">
-            
             <div className="relative overflow-hidden group rounded-xl p-5 bg-slate-900 border border-slate-800">
               <div className="flex justify-between items-center relative z-10">
                 <div>
@@ -198,7 +245,9 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
                   variant="ghost"
                   size="icon"
                   className={`rounded-xl h-12 w-12 transition-all ${
-                    showQr ? "bg-white text-slate-900 hover:bg-slate-100" : "bg-slate-800 text-white hover:bg-slate-700"
+                    showQr
+                      ? "bg-white text-slate-900 hover:bg-slate-100"
+                      : "bg-slate-800 text-white hover:bg-slate-700"
                   }`}
                   onClick={() => setShowQr(!showQr)}
                 >
@@ -218,7 +267,9 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
             <div className="space-y-3">
               <div className="flex items-center gap-4">
                 <div className="h-px flex-1 bg-slate-200" />
-                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Share to feed</span>
+                <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  Share to feed
+                </span>
                 <div className="h-px flex-1 bg-slate-200" />
               </div>
 
@@ -249,7 +300,10 @@ export const ShareRecordDialog = ({ isOpen, onClose, token, category, location }
             </div>
 
             <div className="space-y-2 pt-2">
-              <Label htmlFor="link" className="text-xs font-bold text-slate-700 uppercase tracking-widest ml-1">
+              <Label
+                htmlFor="link"
+                className="text-xs font-bold text-slate-700 uppercase tracking-widest ml-1"
+              >
                 Direct Link
               </Label>
               <div className="flex items-center gap-2 p-1.5 bg-slate-50 border border-slate-200 rounded-xl focus-within:ring-2 focus-within:ring-blue-500/20 focus-within:border-blue-500/50 transition-all">

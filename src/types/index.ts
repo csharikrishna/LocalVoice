@@ -13,6 +13,7 @@ export interface Complaint {
   upvotes?: number;
   assigned_squad_id?: string | null;
   assigned_agent_id?: string | null;
+  resolvedAt?: any;
 }
 
 export type AdminRole = "superadmin" | "admin" | "department_admin" | "field_worker";
@@ -23,5 +24,14 @@ export interface StaffMember {
   role: string;
   department: string | null;
   squad_id: string | null;
-  status: 'active' | 'suspended';
+  status: "active" | "suspended";
+}
+
+export interface AuditLog {
+  id: string;
+  complaintId: string | null;
+  action: string;
+  actorEmail: string;
+  details: Record<string, any>;
+  timestamp: any;
 }

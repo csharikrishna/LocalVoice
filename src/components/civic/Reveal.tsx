@@ -1,4 +1,4 @@
-import { useEffect, useRef, type ReactNode } from "react";
+import { createElement, useEffect, useRef, type ReactNode } from "react";
 
 export function Reveal({
   children,
@@ -8,7 +8,7 @@ export function Reveal({
 }: {
   children: ReactNode;
   delay?: number;
-  as?: any;
+  as?: keyof HTMLElementTagNameMap;
   className?: string;
 }) {
   const ref = useRef<HTMLElement | null>(null);
@@ -24,14 +24,10 @@ export function Reveal({
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.12 },
     );
     io.observe(el);
     return () => io.disconnect();
   }, [delay]);
-  return (
-    <Tag ref={ref as any} className={`reveal ${className}`}>
-      {children}
-    </Tag>
-  );
+  return createElement(Tag, { ref, className: `reveal ${className}` }, children);
 }

@@ -41,3 +41,4 @@ admin_credentials.md
 firebase-debug.log
 firebase-debug.*.log
 firestore-debug.log
+firebase-service-account.json

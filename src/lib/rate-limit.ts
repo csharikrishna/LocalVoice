@@ -1,4 +1,5 @@
 const RATE_LIMIT_KEY = `${(import.meta.env.VITE_APP_NAME || "localvoice").toLowerCase().replace(/\s+/g, "_")}_reports_dev`;
+const RATE_LIMIT_CLIENT_KEY = `${(import.meta.env.VITE_APP_NAME || "localvoice").toLowerCase().replace(/\s+/g, "_")}_rate_client`;
 const MAX_REPORTS_PER_DAY = 24;
 
 interface ReportRecord {
@@ -9,22 +10,22 @@ export function checkRateLimit(): { allowed: boolean; remaining: number } {
   try {
     const stored = localStorage.getItem(RATE_LIMIT_KEY);
     const records: ReportRecord[] = stored ? JSON.parse(stored) : [];
-    
+
     // Filter records from the last 24 hours
     const now = Date.now();
     const oneDayMs = 24 * 60 * 60 * 1000;
-    const recentRecords = records.filter(r => now - r.timestamp < oneDayMs);
-    
+    const recentRecords = records.filter((r) => now - r.timestamp < oneDayMs);
+
     // Cleanup old records to save space
     if (records.length !== recentRecords.length) {
       localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(recentRecords));
     }
 
     const remaining = Math.max(0, MAX_REPORTS_PER_DAY - recentRecords.length);
-    
+
     return {
       allowed: recentRecords.length < MAX_REPORTS_PER_DAY,
-      remaining
+      remaining,
     };
   } catch (error) {
     console.error("Rate limit check failed", error);
@@ -37,11 +38,27 @@ export function recordReportSubmission(): void {
   try {
     const stored = localStorage.getItem(RATE_LIMIT_KEY);
     const records: ReportRecord[] = stored ? JSON.parse(stored) : [];
-    
+
     records.push({ timestamp: Date.now() });
-    
+
     localStorage.setItem(RATE_LIMIT_KEY, JSON.stringify(records));
   } catch (error) {
     console.error("Failed to record submission", error);
+  }
+}
+
+export function getRateLimitClientId(): string {
+  try {
+    const existing = localStorage.getItem(RATE_LIMIT_CLIENT_KEY);
+    if (existing) return existing;
+
+    const bytes = crypto.getRandomValues(new Uint8Array(16));
+    const id = Array.from(bytes)
+      .map((byte) => byte.toString(16).padStart(2, "0"))
+      .join("");
+    localStorage.setItem(RATE_LIMIT_CLIENT_KEY, id);
+    return id;
+  } catch {
+    return "storage-unavailable";
   }
 }

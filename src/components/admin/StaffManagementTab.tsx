@@ -1,17 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { collection, query, getDocs, doc, updateDoc, setDoc } from 'firebase/firestore';
-import { initializeApp, getApps, getApp } from 'firebase/app';
-import { getAuth, createUserWithEmailAndPassword } from 'firebase/auth';
-import { db, firebaseConfig } from '../../lib/firebase';
-import { Loader2, UserPlus, UserX, UserCheck, Shield, Users, Mail, RefreshCw, X, Lock } from 'lucide-react';
-import { StaffMember } from '../../types';
+import React, { useEffect, useState } from "react";
+import { auth } from "../../lib/firebase";
+import { createStaff, getStaff, toggleStaffStatus } from "../../lib/api/admin.functions";
+import {
+  Loader2,
+  UserPlus,
+  UserX,
+  UserCheck,
+  Shield,
+  Users,
+  Mail,
+  RefreshCw,
+  X,
+  Lock,
+} from "lucide-react";
+import { StaffMember } from "../../types";
 import { toast } from "sonner";
 
 export function StaffManagementTab() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  
+
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newEmail, setNewEmail] = useState("");
@@ -19,22 +28,15 @@ export function StaffManagementTab() {
   const [newRole, setNewRole] = useState("department_admin");
   const [newDepartment, setNewDepartment] = useState("Electrical");
   const [isInviting, setIsInviting] = useState(false);
-  const [inviteMode, setInviteMode] = useState<'manual' | 'email'>('manual');
+  const [inviteMode, setInviteMode] = useState<"manual" | "email">("manual");
 
   const fetchStaff = async () => {
     try {
       setRefreshing(true);
-      const q = query(collection(db, "admins"));
-      const snapshot = await getDocs(q);
-      const staffList = snapshot.docs.map(doc => ({
-        id: doc.id,
-        email: doc.id,
-        role: doc.data().role || 'department_admin',
-        department: doc.data().department || null,
-        squad_id: doc.data().squad_id || null,
-        status: doc.data().status || 'active'
-      })) as StaffMember[];
-      setStaff(staffList);
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
+      const data = await getStaff({ data: { adminToken: token } });
+      setStaff(data as StaffMember[]);
     } catch (err) {
       console.error("Failed to fetch staff:", err);
       toast.error("Failed to load staff list");
@@ -50,9 +52,14 @@ export function StaffManagementTab() {
 
   const handleToggleStatus = async (email: string, currentStatus: string) => {
     try {
-      const newStatus = currentStatus === 'active' ? 'suspended' : 'active';
-      await updateDoc(doc(db, "admins", email), { status: newStatus });
-      setStaff(prev => prev.map(s => s.email === email ? { ...s, status: newStatus } : s));
+      const newStatus = currentStatus === "active" ? "suspended" : "active";
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
+      
+      const res = await toggleStaffStatus({ data: { adminToken: token, staffId: email, status: newStatus } });
+      if (!res.ok) throw new Error(res.message);
+      
+      setStaff((prev) => prev.map((s) => (s.email === email ? { ...s, status: newStatus } : s)));
       toast.success(`Staff member ${newStatus}`);
     } catch (err) {
       console.error("Failed to update status", err);
@@ -62,13 +69,13 @@ export function StaffManagementTab() {
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newEmail.includes('@')) {
+    if (!newEmail.includes("@")) {
       toast.error("Invalid email format");
       return;
     }
-    
+
     let passwordToUse = newPassword;
-    if (inviteMode === 'email') {
+    if (inviteMode === "email") {
       passwordToUse = Math.random().toString(36).slice(-8); // Generate 8 char random password
     } else if (passwordToUse.length < 6) {
       toast.error("Password must be at least 6 characters");
@@ -77,46 +84,46 @@ export function StaffManagementTab() {
 
     try {
       setIsInviting(true);
-      // We must use a secondary Firebase App to create the user, otherwise the
-      // Firebase SDK automatically logs the superadmin out and signs the new user in.
-      const secondaryAppName = "StaffManagerApp";
-      const secondaryApp = getApps().find(a => a.name === secondaryAppName) 
-        || initializeApp(firebaseConfig, secondaryAppName);
-      
-      const secondaryAuth = getAuth(secondaryApp);
-      
-      // Create the Auth account
-      await createUserWithEmailAndPassword(secondaryAuth, newEmail, passwordToUse);
-      
-      // Sign out the secondary instance immediately to be safe
-      await secondaryAuth.signOut();
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) throw new Error("Not authenticated");
 
-      // Create the Firestore document
-      await setDoc(doc(db, "admins", newEmail), {
-        role: newRole,
-        department: newRole === 'department_admin' || newRole === 'field_worker' ? newDepartment : null,
-        status: 'active'
+      const result = await createStaff({
+        data: {
+          email: newEmail,
+          password: passwordToUse,
+          role: newRole as "admin" | "department_admin" | "field_worker",
+          department: newRole === "department_admin" || newRole === "field_worker" ? newDepartment : null,
+          adminToken: token,
+        },
       });
-      
-      if (inviteMode === 'email') {
+
+      if (!result.ok) {
+        throw new Error(result.message);
+      }
+
+      if (inviteMode === "email") {
         const subject = encodeURIComponent("Welcome to LocalVoice Staff Portal");
-        const body = encodeURIComponent(`Hello,\n\nYou have been invited to join the LocalVoice Staff Portal.\n\nYour Login Email: ${newEmail}\nYour Temporary Password: ${passwordToUse}\n\nPlease log in and change your password as soon as possible.\n\nBest,\nAdmin Team`);
+        const body = encodeURIComponent(
+          `Hello,\n\nYou have been invited to join the LocalVoice Staff Portal.\n\nYour Login Email: ${newEmail}\nYour Temporary Password: ${passwordToUse}\n\nPlease log in and change your password as soon as possible.\n\nBest,\nAdmin Team`,
+        );
         window.location.href = `mailto:${newEmail}?subject=${subject}&body=${body}`;
         toast.success("Staff member created! Opening email client to send credentials...");
       } else {
         toast.success("Staff member created successfully! They can log in now.");
       }
-      
+
       setIsModalOpen(false);
       setNewEmail("");
       setNewPassword("");
       fetchStaff();
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to invite staff", err);
-      if (err.code === 'auth/email-already-in-use') {
+      const error =
+        err && typeof err === "object" ? (err as { code?: string; message?: string }) : {};
+      if (error.code === "auth/email-already-in-use") {
         toast.error("That email is already registered.");
       } else {
-        toast.error(err.message || "Failed to create staff account.");
+        toast.error(error.message || "Failed to create staff account.");
       }
     } finally {
       setIsInviting(false);
@@ -138,7 +145,9 @@ export function StaffManagementTab() {
           <h2 className="text-lg font-bold text-gray-900 flex items-center gap-2">
             <Users size={20} className="text-blue-600" /> Staff Directory
           </h2>
-          <p className="text-sm text-gray-500 mt-1">Manage platform access, roles, and department assignments.</p>
+          <p className="text-sm text-gray-500 mt-1">
+            Manage platform access, roles, and department assignments.
+          </p>
         </div>
         <div className="flex items-center gap-3">
           <button
@@ -181,7 +190,7 @@ export function StaffManagementTab() {
                 </td>
                 <td className="px-6 py-4">
                   <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md text-xs font-medium bg-indigo-50 text-indigo-700 border border-indigo-100">
-                    <Shield size={12} /> {s.role.replace('_', ' ')}
+                    <Shield size={12} /> {s.role.replace("_", " ")}
                   </span>
                 </td>
                 <td className="px-6 py-4">
@@ -192,7 +201,7 @@ export function StaffManagementTab() {
                   )}
                 </td>
                 <td className="px-6 py-4">
-                  {s.status === 'active' ? (
+                  {s.status === "active" ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Active
                     </span>
@@ -206,15 +215,19 @@ export function StaffManagementTab() {
                   <button
                     onClick={() => handleToggleStatus(s.email, s.status)}
                     className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      s.status === 'active' 
-                        ? 'text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200' 
-                        : 'text-green-600 hover:bg-green-50 border border-transparent hover:border-green-200'
+                      s.status === "active"
+                        ? "text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200"
+                        : "text-green-600 hover:bg-green-50 border border-transparent hover:border-green-200"
                     }`}
                   >
-                    {s.status === 'active' ? (
-                      <><UserX size={14} /> Suspend</>
+                    {s.status === "active" ? (
+                      <>
+                        <UserX size={14} /> Suspend
+                      </>
                     ) : (
-                      <><UserCheck size={14} /> Restore</>
+                      <>
+                        <UserCheck size={14} /> Restore
+                      </>
                     )}
                   </button>
                 </td>
@@ -237,7 +250,10 @@ export function StaffManagementTab() {
           <div className="bg-white rounded-xl shadow-xl w-full max-w-md overflow-hidden border border-gray-100">
             <div className="p-5 border-b border-gray-100 flex justify-between items-center bg-gray-50">
               <h3 className="font-bold text-gray-900 text-lg">Invite New Staff</h3>
-              <button onClick={() => setIsModalOpen(false)} className="text-gray-400 hover:text-gray-700">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="text-gray-400 hover:text-gray-700"
+              >
                 <X size={20} />
               </button>
             </div>
@@ -246,24 +262,29 @@ export function StaffManagementTab() {
               <div className="flex bg-gray-100 p-1 rounded-lg">
                 <button
                   type="button"
-                  onClick={() => setInviteMode('manual')}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${inviteMode === 'manual' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setInviteMode("manual")}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${inviteMode === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                 >
                   Create Manually
                 </button>
                 <button
                   type="button"
-                  onClick={() => setInviteMode('email')}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${inviteMode === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-500 hover:text-gray-700'}`}
+                  onClick={() => setInviteMode("email")}
+                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${inviteMode === "email" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
                 >
                   Email Invite
                 </button>
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">Email Address</label>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Email Address
+                </label>
                 <div className="relative">
-                  <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                  <Mail
+                    size={16}
+                    className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                  />
                   <input
                     type="email"
                     required
@@ -275,11 +296,14 @@ export function StaffManagementTab() {
                 </div>
               </div>
 
-              {inviteMode === 'manual' ? (
+              {inviteMode === "manual" ? (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
                   <div className="relative">
-                    <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" />
+                    <Lock
+                      size={16}
+                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
+                    />
                     <input
                       type="text"
                       required
@@ -292,11 +316,16 @@ export function StaffManagementTab() {
                 </div>
               ) : (
                 <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800">
-                  <p className="font-medium flex items-center gap-1.5 mb-1"><Mail size={16} /> Auto-generate & Email</p>
-                  <p className="text-blue-600">An 8-character password will be securely generated. We will open your email client pre-filled with their login credentials to send.</p>
+                  <p className="font-medium flex items-center gap-1.5 mb-1">
+                    <Mail size={16} /> Auto-generate & Email
+                  </p>
+                  <p className="text-blue-600">
+                    An 8-character password will be securely generated. We will open your email
+                    client pre-filled with their login credentials to send.
+                  </p>
                 </div>
               )}
-              
+
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
                 <select
@@ -310,9 +339,11 @@ export function StaffManagementTab() {
                 </select>
               </div>
 
-              {(newRole === 'department_admin' || newRole === 'field_worker') && (
+              {(newRole === "department_admin" || newRole === "field_worker") && (
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Assigned Department</label>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    Assigned Department
+                  </label>
                   <select
                     value={newDepartment}
                     onChange={(e) => setNewDepartment(e.target.value)}

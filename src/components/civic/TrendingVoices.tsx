@@ -1,11 +1,31 @@
 import { motion, useInView } from "framer-motion";
 import { useRef, useEffect, useState } from "react";
-import { ArrowUp, MessageCircle, Share2, Shield, MapPin, AlertCircle, CheckCircle2, Wrench, Flame } from "lucide-react";
-import { collection, query, where, getDocs, orderBy, limit } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import {
+  ArrowUp,
+  MessageCircle,
+  Share2,
+  Shield,
+  MapPin,
+  AlertCircle,
+  CheckCircle2,
+  Wrench,
+  Flame,
+} from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import { getTrendingComplaints } from "@/lib/api/queries.functions";
 import { Link } from "@tanstack/react-router";
 
-const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+type TrendingPost = {
+  id: string;
+  status?: string;
+  category?: string;
+  description?: string;
+  location?: string;
+  isAnonymous?: boolean;
+  upvotes?: number;
+};
+
+const statusConfig: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   open: { label: "Unresolved", color: "#dc2626", icon: AlertCircle },
   working: { label: "In Progress", color: "#d97706", icon: Wrench },
   closed: { label: "Resolved", color: "#16a34a", icon: CheckCircle2 },
@@ -14,24 +34,14 @@ const statusConfig: Record<string, { label: string; color: string; icon: any }> 
 export function TrendingVoices() {
   const ref = useRef(null);
   const inView = useInView(ref, { once: true, margin: "-100px" });
-  const [trendingPosts, setTrendingPosts] = useState<any[]>([]);
+  const [trendingPosts, setTrendingPosts] = useState<TrendingPost[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function fetchTrending() {
       try {
-        const q = query(
-          collection(db, "complaints"),
-          where("status", "==", "open"),
-          orderBy("upvotes", "desc"),
-          limit(4)
-        );
-        const snapshot = await getDocs(q);
-        const data = snapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        setTrendingPosts(data);
+        const data = await getTrendingComplaints();
+        setTrendingPosts(data as any);
       } catch (err) {
         console.error("Error fetching trending voices:", err);
       } finally {
@@ -67,6 +77,7 @@ export function TrendingVoices() {
           </div>
           <Link
             to="/map"
+            search={{ issueId: undefined }}
             className="font-semibold text-sm uppercase tracking-wider text-[color:var(--primary)] hover:text-blue-800 transition-colors flex items-center gap-2"
           >
             View All Reports
@@ -76,7 +87,7 @@ export function TrendingVoices() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {trendingPosts.map((post, i) => {
-            const conf = statusConfig[post.status] || statusConfig.open;
+            const conf = statusConfig[post.status ?? "open"] || statusConfig.open;
             return (
               <motion.article
                 key={post.id}
@@ -86,7 +97,7 @@ export function TrendingVoices() {
                 className="group bg-white rounded-2xl p-6 border border-slate-200 shadow-sm hover:shadow-md hover:border-[color:var(--primary)] transition-all duration-300 relative overflow-hidden"
               >
                 <div className="absolute top-0 right-0 w-32 h-32 bg-[color:var(--primary)]/5 rounded-bl-[100px] -z-10 group-hover:scale-110 transition-transform duration-500" />
-                
+
                 <div className="flex items-start justify-between gap-4 mb-4">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-slate-600 bg-slate-100 px-2.5 py-1 rounded-md">
                     {post.category}
@@ -106,7 +117,12 @@ export function TrendingVoices() {
                     <span className="truncate">{post.location}</span>
                   </span>
                   <span className="shrink-0 flex items-center gap-1">
-                    <Shield size={12} className={post.isAnonymous ? "text-slate-400" : "text-[color:var(--primary)]"} />
+                    <Shield
+                      size={12}
+                      className={
+                        post.isAnonymous ? "text-slate-400" : "text-[color:var(--primary)]"
+                      }
+                    />
                     {post.isAnonymous ? "Anonymous" : "Verified Citizen"}
                   </span>
                 </div>

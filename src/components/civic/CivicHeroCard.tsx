@@ -6,6 +6,13 @@ import { useState } from "react";
 import { ShareRecordDialog } from "./ShareRecordDialog";
 import { toast } from "sonner";
 
+function getErrorDetails(error: unknown) {
+  if (error && typeof error === "object") {
+    return error as { name?: string; message?: string };
+  }
+  return { message: String(error) };
+}
+
 interface CivicHeroCardProps {
   token: string;
   category: string;
@@ -30,10 +37,12 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
         skipFonts: true, // Prevents SecurityError from cross-origin Google Fonts
         filter: (node) => {
           return (node as HTMLElement).id !== "scanner-line";
-        }
+        },
       });
 
-      const appPrefix = (import.meta.env.VITE_APP_NAME || "localvoice").toLowerCase().replace(/\s+/g, "_");
+      const appPrefix = (import.meta.env.VITE_APP_NAME || "localvoice")
+        .toLowerCase()
+        .replace(/\s+/g, "_");
       const filename = `${appPrefix}-receipt-${token}.png`;
 
       // On mobile (especially iOS Safari), programmatic downloads of Data URLs often silently fail.
@@ -50,9 +59,13 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
             });
             sharedNatively = true;
           }
-        } catch (shareErr: any) {
-          if (shareErr.name !== "AbortError") {
-            console.warn("Native share for saving failed, falling back to anchor download", shareErr);
+        } catch (shareErr) {
+          const error = getErrorDetails(shareErr);
+          if (error.name !== "AbortError") {
+            console.warn(
+              "Native share for saving failed, falling back to anchor download",
+              shareErr,
+            );
           } else {
             sharedNatively = true; // User cancelled the share sheet, do not fallback
           }
@@ -69,10 +82,10 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
         document.body.removeChild(link);
         toast.success("Receipt downloaded!");
       }
-
-    } catch (err: any) {
+    } catch (err) {
       console.error("Failed to download card:", err);
-      toast.error("Failed to generate receipt: " + (err.message || "Unknown error"));
+      const error = getErrorDetails(err);
+      toast.error("Failed to generate receipt: " + (error.message || "Unknown error"));
     }
   };
 
@@ -102,7 +115,7 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
             <polygon points="100,0 100,100 0,0" />
           </svg>
         </div>
-        
+
         <div className="p-6 relative z-10">
           <div className="flex items-start justify-between mb-6 border-b border-slate-200 pb-4">
             <div className="flex items-center gap-3">
@@ -110,46 +123,57 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
                 <span className="text-white text-lg font-mono font-bold">LV</span>
               </div>
               <div>
-                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">Secure Record</p>
-                <h3 className="font-bold text-lg text-slate-900 leading-tight">Official Report Receipt</h3>
+                <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold">
+                  Secure Record
+                </p>
+                <h3 className="font-bold text-lg text-slate-900 leading-tight">
+                  Official Report Receipt
+                </h3>
               </div>
             </div>
             <div className="text-right">
-              <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Timestamp</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">
+                Timestamp
+              </p>
               <p className="text-xs font-mono text-slate-600">{new Date().toLocaleDateString()}</p>
             </div>
           </div>
 
           <div className="space-y-5">
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Issue Category</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">
+                Issue Category
+              </p>
               <p className="font-mono text-sm font-semibold text-slate-900 uppercase">{category}</p>
             </div>
-            
+
             <div>
-              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">Incident Location</p>
-              <p className="font-mono text-xs text-slate-700 bg-slate-200/50 p-2 rounded">{location}</p>
+              <p className="text-[10px] uppercase tracking-widest text-slate-500 font-bold mb-1">
+                Incident Location
+              </p>
+              <p className="font-mono text-xs text-slate-700 bg-slate-200/50 p-2 rounded">
+                {location}
+              </p>
             </div>
 
             <div className="flex justify-between items-end bg-slate-900 text-white p-3 rounded">
               <div className="flex-1">
-                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">Tracking Token</p>
+                <p className="text-[10px] uppercase tracking-widest text-slate-400 font-bold mb-1">
+                  Tracking Token
+                </p>
                 <p className="font-mono font-bold tracking-wider text-lg">{token}</p>
-                <p className="text-[10px] font-mono font-bold text-emerald-400 mt-2">VERIFICATION: SECURE</p>
+                <p className="text-[10px] font-mono font-bold text-emerald-400 mt-2">
+                  VERIFICATION: SECURE
+                </p>
               </div>
               <div className="shrink-0 ml-4 bg-white p-1.5 rounded flex items-center justify-center">
-                <QRCodeSVG 
-                  value={trackingUrl} 
-                  size={48} 
-                  level="H"
-                  includeMargin={false}
-                />
+                <QRCodeSVG value={trackingUrl} size={48} level="H" includeMargin={false} />
               </div>
             </div>
           </div>
         </div>
         <div className="bg-slate-200 border-t border-slate-300 text-slate-600 text-center py-2 text-[10px] font-mono tracking-widest uppercase">
-          {(import.meta.env.VITE_APP_URL || "localvoice.web.app").replace(/^https?:\/\//, '')}
+          {(import.meta.env.VITE_APP_URL || "localvoice.web.app").replace(/^https?:\/\//, "")}
         </div>
       </div>
 
@@ -179,9 +203,9 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
         Submit another report
       </button>
 
-      <ShareRecordDialog 
-        isOpen={isShareOpen} 
-        onClose={() => setIsShareOpen(false)} 
+      <ShareRecordDialog
+        isOpen={isShareOpen}
+        onClose={() => setIsShareOpen(false)}
         token={token}
         category={category}
         location={location}

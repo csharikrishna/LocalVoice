@@ -14,7 +14,6 @@ import appCss from "../styles.css?url";
 import { Nav } from "@/components/civic/Nav";
 import { Footer } from "@/components/civic/Footer";
 import { SEO } from "@/components/civic/SEO";
-import { HelmetProvider } from "react-helmet-async";
 import { Toaster } from "sonner";
 
 function NotFoundComponent() {
@@ -176,12 +175,16 @@ export const Route = createRootRouteWithContext<{
 
 function RootShell({ children }: { children: ReactNode }) {
   return (
-    <HelmetProvider>
-      <HeadContent />
-      <SEO />
-      {children}
-      <Scripts />
-    </HelmetProvider>
+    <html lang="en">
+      <head>
+        <HeadContent />
+        <SEO />
+      </head>
+      <body>
+        {children}
+        <Scripts />
+      </body>
+    </html>
   );
 }
 

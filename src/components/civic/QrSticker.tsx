@@ -10,6 +10,21 @@ type Props = {
   className?: string;
 };
 
+type BuildQrReportUrlOptions = {
+  url?: string;
+  origin?: string;
+  appUrl?: string;
+  assetId: string;
+};
+
+// eslint-disable-next-line react-refresh/only-export-components -- exported for QR smoke checks.
+export function buildQrReportUrl({ url, origin, appUrl, assetId }: BuildQrReportUrlOptions) {
+  if (url) return url;
+
+  const baseUrl = (origin || appUrl || "https://localvoice.web.app").replace(/\/$/, "");
+  return `${baseUrl}/?assetId=${encodeURIComponent(assetId)}#report`;
+}
+
 export function QrSticker({
   url,
   assetId = "VJZ-HYD-0427",
@@ -17,12 +32,25 @@ export function QrSticker({
   category = "Street Light",
   className = "",
 }: Props) {
-  const fallback = url ?? `${import.meta.env.VITE_APP_URL || 'https://localvoice.web.app'}/r/${assetId}`;
-  const [reportUrl, setReportUrl] = useState(fallback);
-  useEffect(() => {
-    if (!url) setReportUrl(`${window.location.origin}/report?id=${assetId}`);
-  }, [url, assetId]);
+  const [reportUrl, setReportUrl] = useState(() =>
+    buildQrReportUrl({
+      url,
+      origin: typeof window !== "undefined" ? window.location.origin : undefined,
+      appUrl: import.meta.env.VITE_APP_URL,
+      assetId,
+    }),
+  );
 
+  useEffect(() => {
+    setReportUrl(
+      buildQrReportUrl({
+        url,
+        origin: window.location.origin,
+        appUrl: import.meta.env.VITE_APP_URL,
+        assetId,
+      }),
+    );
+  }, [url, assetId]);
 
   return (
     <div
@@ -56,9 +84,7 @@ export function QrSticker({
       </div>
 
       <div className="mt-4 space-y-1">
-        <p className="text-sm font-semibold text-[color:var(--text-primary)]">
-          Report: {category}
-        </p>
+        <p className="text-sm font-semibold text-[color:var(--text-primary)]">Report: {category}</p>
         <p className="flex items-center gap-1 text-xs text-[color:var(--text-secondary)]">
           <MapPin size={12} /> {location}
         </p>

@@ -22,12 +22,12 @@
  *   • Returns a `cancel()` so the consumer can let the user abort detection.
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect } from "react";
 
 const GEOCODE_URL = "https://nominatim.openstreetmap.org/reverse";
 const NOMINATIM_HEADERS = { "Accept-Language": "en" };
-const ACCURACY_THRESHOLD_M = 65; // Wi-Fi assisted location is usually ~65m. This allows near-instant locks on mobile.
-const MAX_WAIT_MS = 6000; // Reduced from 15s to 6s so users never wait too long.
+const ACCURACY_THRESHOLD_M = 250; // Increased to 250m to allow desktop and non-GPS locks.
+const MAX_WAIT_MS = 12000; // Increased to 12s to give the device enough time to fetch location.
 
 // ─── Reverse geocoding ──────────────────────────────────────────────────────
 
@@ -35,7 +35,7 @@ const MAX_WAIT_MS = 6000; // Reduced from 15s to 6s so users never wait too long
 export async function reverseGeocode(
   lat: number,
   lng: number,
-  signal?: AbortSignal
+  signal?: AbortSignal,
 ): Promise<string> {
   const url = new URL(GEOCODE_URL);
   url.searchParams.set("lat", String(lat));
@@ -89,7 +89,10 @@ interface UseGeolocationResult {
 
 // ─── Hook ───────────────────────────────────────────────────────────────────
 
-export function useGeolocation({ onSuccess, onError }: UseGeolocationOptions): UseGeolocationResult {
+export function useGeolocation({
+  onSuccess,
+  onError,
+}: UseGeolocationOptions): UseGeolocationResult {
   const [isDetecting, setIsDetecting] = useState(false);
   const [accuracy, setAccuracy] = useState<number | null>(null);
 
@@ -97,8 +100,12 @@ export function useGeolocation({ onSuccess, onError }: UseGeolocationOptions): U
   // even if the caller passes fresh inline functions on every render.
   const onSuccessRef = useRef(onSuccess);
   const onErrorRef = useRef(onError);
-  useEffect(() => { onSuccessRef.current = onSuccess; }, [onSuccess]);
-  useEffect(() => { onErrorRef.current = onError; }, [onError]);
+  useEffect(() => {
+    onSuccessRef.current = onSuccess;
+  }, [onSuccess]);
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
 
   const watchIdRef = useRef<number | null>(null);
   const timeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -129,37 +136,44 @@ export function useGeolocation({ onSuccess, onError }: UseGeolocationOptions): U
     setIsDetecting(false);
   }, [stopWatch]);
 
-  const finalize = useCallback(async (lat: number, lng: number, acc: number) => {
-    // Claim this attempt's generation. If a better fix supersedes us before
-    // the geocode resolves, our generation goes stale and we no-op on return.
-    const myGeneration = ++generationRef.current;
-    settledRef.current = false;
+  const finalize = useCallback(
+    async (lat: number, lng: number, acc: number) => {
+      // Claim this attempt's generation. If a better fix supersedes us before
+      // the geocode resolves, our generation goes stale and we no-op on return.
+      const myGeneration = ++generationRef.current;
+      settledRef.current = false;
 
-    stopWatch();
+      stopWatch();
 
-    // Abort any previous in-flight geocode — it's now superseded.
-    geocodeAbortRef.current?.abort();
-    const controller = new AbortController();
-    geocodeAbortRef.current = controller;
+      // Abort any previous in-flight geocode — it's now superseded.
+      geocodeAbortRef.current?.abort();
+      const controller = new AbortController();
+      geocodeAbortRef.current = controller;
 
-    let address: string;
-    try {
-      address = await reverseGeocode(lat, lng, controller.signal);
-    } catch {
-      address = controller.signal.aborted ? "" : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
-    }
+      let address: string;
+      try {
+        address = await reverseGeocode(lat, lng, controller.signal);
+      } catch {
+        address = controller.signal.aborted ? "" : `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+      }
 
-    // Stale if: aborted mid-flight, a newer generation started, or we already
-    // settled via cancel()/error path.
-    if (controller.signal.aborted || myGeneration !== generationRef.current || settledRef.current) {
-      return;
-    }
+      // Stale if: aborted mid-flight, a newer generation started, or we already
+      // settled via cancel()/error path.
+      if (
+        controller.signal.aborted ||
+        myGeneration !== generationRef.current ||
+        settledRef.current
+      ) {
+        return;
+      }
 
-    settledRef.current = true;
-    setAccuracy(Math.round(acc));
-    setIsDetecting(false);
-    onSuccessRef.current({ lat, lng }, address, acc);
-  }, [stopWatch]);
+      settledRef.current = true;
+      setAccuracy(Math.round(acc));
+      setIsDetecting(false);
+      onSuccessRef.current({ lat, lng }, address, acc);
+    },
+    [stopWatch],
+  );
 
   const detectLocation = useCallback(() => {
     if (!navigator.geolocation) {
@@ -204,13 +218,15 @@ export function useGeolocation({ onSuccess, onError }: UseGeolocationOptions): U
           2: "Location unavailable. Your device couldn't determine your position — please enter it manually.",
           3: "Location timed out. Please try again or enter your location manually.",
         };
-        onErrorRef.current(messages[error.code] ?? "Location detection failed. Please enter manually.");
+        onErrorRef.current(
+          messages[error.code] ?? "Location detection failed. Please enter manually.",
+        );
       },
       {
         enableHighAccuracy: true,
         timeout: MAX_WAIT_MS,
         maximumAge: 0,
-      }
+      },
     );
 
     timeoutRef.current = setTimeout(() => {

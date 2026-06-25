@@ -11,6 +11,7 @@ import { useTranslation } from "react-i18next";
 import { SEO } from "@/components/civic/SEO";
 import { TrendingVoices } from "@/components/civic/TrendingVoices";
 import { MyReportsView } from "@/components/civic/MyReportsView";
+import { IssueCarousel } from "@/components/civic/IssueCarousel";
 
 export const Route = createFileRoute("/")({
   component: Home,
@@ -28,6 +29,7 @@ function Home() {
       <Problem />
       <HowItWorks />
       <ReportSection />
+      <IssueCarousel />
       <TrackSection />
       <TrendingVoices />
       <Features />
@@ -42,7 +44,7 @@ function Hero() {
   const { t } = useTranslation();
 
   return (
-    <section className="relative pt-28 lg:pt-32 pb-16 lg:pb-24 overflow-hidden">
+    <section className="relative pt-16 lg:pt-32 pb-12 lg:pb-24 overflow-hidden">
       <div
         aria-hidden="true"
         className="absolute inset-0 pointer-events-none"
@@ -55,7 +57,7 @@ function Hero() {
         <div>
           <Reveal delay={50}>
             <span
-              className="inline-flex items-center gap-1.5 text-xs font-semibold px-3 py-1.5 rounded-full"
+              className="inline-flex items-center gap-1.5 text-[10px] sm:text-xs font-semibold px-2.5 py-1 sm:px-3 sm:py-1.5 rounded-full"
               style={{
                 background: "var(--primary-tint)",
                 color: "var(--primary)",
@@ -68,7 +70,7 @@ function Hero() {
           </Reveal>
 
           <h1
-            className="mt-6 font-extrabold leading-[1.05] text-5xl md:text-6xl lg:text-[72px]"
+            className="mt-5 lg:mt-6 font-extrabold leading-[1.05] text-[40px] md:text-6xl lg:text-[72px]"
             style={{ letterSpacing: "-0.04em" }}
           >
             <Reveal delay={120}>
@@ -77,13 +79,13 @@ function Hero() {
           </h1>
 
           <Reveal delay={380}>
-            <p className="mt-7 text-lg lg:text-xl text-[color:var(--text-secondary)] max-w-[560px] leading-[1.55]">
+            <p className="mt-4 lg:mt-7 text-base lg:text-xl text-[color:var(--text-secondary)] max-w-[560px] leading-[1.55]">
               {t("home.subtitle", `${import.meta.env.VITE_APP_NAME || "LocalVoice"} turns every public asset into a reporting channel. Scan the QR, describe the problem, and it lands with the right authority — in under 60 seconds.`)}
             </p>
           </Reveal>
 
           <Reveal delay={460}>
-            <div className="mt-9 flex flex-wrap items-center gap-3.5">
+            <div className="mt-6 lg:mt-9 flex flex-wrap items-center gap-3.5">
               <a
                 href="#report"
                 className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[10px] font-semibold text-base text-white bg-[color:var(--primary)] hover:bg-[color:var(--primary-dark)] transition-all hover:-translate-y-px"

@@ -1,7 +1,7 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect } from "react";
-import { collection, query, where, getDocs, doc, updateDoc, increment } from "firebase/firestore";
-import { db } from "@/lib/firebase";
+import { getComplaintByToken } from "@/lib/api/queries.functions";
+import { upvoteComplaint } from "@/lib/api/complaints.functions";
 import {
   Search,
   Loader2,
@@ -29,8 +29,7 @@ export const Route = createFileRoute("/track")({
       { title: `Track Your Report — ${import.meta.env.VITE_APP_NAME || "LocalVoice"}` },
       {
         name: "description",
-        content:
-          "Check the status of your civic issue report using your tracking token.",
+        content: "Check the status of your civic issue report using your tracking token.",
       },
     ],
   }),
@@ -98,18 +97,8 @@ function TrackPage() {
     setSearched(true);
 
     try {
-      const q = query(
-        collection(db, "complaints"),
-        where("token", "==", trimmed)
-      );
-      const snapshot = await getDocs(q);
-
-      if (snapshot.empty) {
-        setResult(null);
-      } else {
-        const doc = snapshot.docs[0];
-        setResult({ id: doc.id, ...doc.data() } as ComplaintResult);
-      }
+      const data = await getComplaintByToken({ data: { token: trimmed } });
+      setResult(data as any);
 
       // Update URL with token for shareability
       navigate({ search: { token: trimmed }, replace: true });
@@ -124,24 +113,26 @@ function TrackPage() {
   const handleUpvote = async () => {
     if (!result) return;
     try {
-      const appKey = (import.meta.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "_");
+      const appKey = (import.meta.env.VITE_APP_NAME || "LocalVoice")
+        .toLowerCase()
+        .replace(/\s+/g, "_");
       const voted = JSON.parse(localStorage.getItem(`${appKey}_upvotes`) || "[]");
       if (voted.includes(result.id)) {
         toast.info("You've already upvoted this issue.");
         return;
       }
-      
-      const docRef = doc(db, "complaints", result.id);
-      await updateDoc(docRef, {
-        upvotes: increment(1)
-      });
+
+      const res = await upvoteComplaint({ data: { id: result.id } });
+      if (!(res as any).ok) throw new Error((res as any).message || "Failed to upvote");
       localStorage.setItem(`${appKey}_upvotes`, JSON.stringify([...voted, result.id]));
 
-      setResult(prev => prev ? { ...prev, upvotes: (prev.upvotes || 0) + 1 } : null);
+      setResult((prev) => (prev ? { ...prev, upvotes: (prev.upvotes || 0) + 1 } : null));
     } catch (err) {
       console.error("Failed to upvote:", err);
-      setResult(prev => prev ? { ...prev, upvotes: Math.max(0, (prev.upvotes || 1) - 1) } : null);
-      alert("Failed to upvote. Please try again.");
+      setResult((prev) =>
+        prev ? { ...prev, upvotes: Math.max(0, (prev.upvotes || 1) - 1) } : null,
+      );
+      toast.error("Failed to upvote. Please try again.");
     }
   };
 
@@ -168,18 +159,13 @@ function TrackPage() {
         </Reveal>
         <Reveal delay={160}>
           <p className="mt-4 text-lg text-[color:var(--text-secondary)] leading-[1.7]">
-            Enter the tracking token you received when you submitted your
-            report.
+            Enter the tracking token you received when you submitted your report.
           </p>
         </Reveal>
 
         {/* Search Form */}
         <Reveal delay={240}>
-          <form
-            onSubmit={handleSearch}
-            className="mt-8 flex gap-3"
-            aria-label="Track complaint"
-          >
+          <form onSubmit={handleSearch} className="mt-8 flex gap-3" aria-label="Track complaint">
             <div className="flex-1 relative">
               <input
                 id="track-token"
@@ -191,8 +177,7 @@ function TrackPage() {
                 style={{ border: "1px solid var(--border)" }}
                 onFocus={(e) => {
                   e.currentTarget.style.borderColor = "var(--primary)";
-                  e.currentTarget.style.boxShadow =
-                    "0 0 0 3px rgba(27,79,216,0.12)";
+                  e.currentTarget.style.boxShadow = "0 0 0 3px rgba(27,79,216,0.12)";
                 }}
                 onBlur={(e) => {
                   e.currentTarget.style.borderColor = "var(--border)";
@@ -211,11 +196,7 @@ function TrackPage() {
               className="inline-flex items-center gap-2 px-6 py-3.5 rounded-[12px] font-semibold text-white bg-[color:var(--primary)] hover:bg-[color:var(--primary-dark)] transition-all disabled:opacity-75 min-h-[48px]"
               style={{ boxShadow: "0 6px 20px rgba(27,79,216,0.25)" }}
             >
-              {loading ? (
-                <Loader2 size={18} className="animate-spin" />
-              ) : (
-                "Track"
-              )}
+              {loading ? <Loader2 size={18} className="animate-spin" /> : "Track"}
             </button>
           </form>
         </Reveal>
@@ -242,8 +223,7 @@ function TrackPage() {
                 >
                   {/* Status Banner */}
                   {(() => {
-                    const config = statusConfig[result.status] ||
-                      statusConfig.open;
+                    const config = statusConfig[result.status] || statusConfig.open;
                     const StatusIcon = config.icon;
                     return (
                       <div
@@ -259,17 +239,11 @@ function TrackPage() {
                           className="shrink-0"
                         />
                         <div>
-                          <div
-                            className="font-bold text-base"
-                            style={{ color: config.color }}
-                          >
+                          <div className="font-bold text-base" style={{ color: config.color }}>
                             {config.label}
                           </div>
                           <div className="text-xs text-[color:var(--text-secondary)] mt-0.5">
-                            Token:{" "}
-                            <span className="font-mono font-bold">
-                              {result.token}
-                            </span>
+                            Token: <span className="font-mono font-bold">{result.token}</span>
                           </div>
                         </div>
                       </div>
@@ -293,10 +267,8 @@ function TrackPage() {
                       </div>
                       <div className="flex items-center gap-1.5 text-sm text-[color:var(--text-secondary)]">
                         <Clock size={14} />
-                        {result.timestamp?.toDate
-                          ? new Date(
-                              result.timestamp.toDate()
-                            ).toLocaleDateString("en-IN", {
+                        {result.timestamp
+                          ? new Date(typeof result.timestamp === 'string' ? result.timestamp : result.timestamp.toDate?.() || result.timestamp).toLocaleDateString("en-IN", {
                               day: "numeric",
                               month: "long",
                               year: "numeric",
@@ -312,10 +284,7 @@ function TrackPage() {
                         Location
                       </div>
                       <div className="flex items-center gap-1.5 text-sm text-[color:var(--text-secondary)]">
-                        <MapPin
-                          size={14}
-                          className="shrink-0 text-[color:var(--primary)]"
-                        />
+                        <MapPin size={14} className="shrink-0 text-[color:var(--primary)]" />
                         {result.location}
                       </div>
                     </div>
@@ -365,12 +334,10 @@ function TrackPage() {
                   <div className="w-16 h-16 mx-auto rounded-full bg-slate-100 flex items-center justify-center mb-4">
                     <Search size={28} className="text-slate-400" />
                   </div>
-                  <h3 className="text-xl font-bold text-slate-900">
-                    No report found
-                  </h3>
+                  <h3 className="text-xl font-bold text-slate-900">No report found</h3>
                   <p className="mt-2 text-sm text-[color:var(--text-secondary)] max-w-sm mx-auto">
-                    We couldn't find a report matching that token. Please
-                    double-check the token and try again.
+                    We couldn't find a report matching that token. Please double-check the token and
+                    try again.
                   </p>
                 </div>
               </Reveal>
@@ -387,16 +354,13 @@ function TrackPage() {
               border: "1px solid var(--border)",
             }}
           >
-            <strong className="text-[color:var(--text-primary)]">
-              Where do I find my token?
-            </strong>
+            <strong className="text-[color:var(--text-primary)]">Where do I find my token?</strong>
             <br />
             You receive a tracking token (e.g.,{" "}
             <code className="font-mono text-xs bg-white px-1.5 py-0.5 rounded border border-[color:var(--border)]">
               CVC-A3F82B10
             </code>
-            ) immediately after submitting a report. Save it to check your
-            complaint status anytime.
+            ) immediately after submitting a report. Save it to check your complaint status anytime.
           </div>
         </Reveal>
       </div>

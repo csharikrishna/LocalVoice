@@ -70,7 +70,9 @@ export function Nav() {
             title="Switch Language"
           >
             <Globe size={18} />
-            <span className="hidden sm:inline">{i18n.language === "en" ? "English" : "తెలుగు"}</span>
+            <span className="hidden sm:inline">
+              {i18n.language === "en" ? "English" : "తెలుగు"}
+            </span>
           </button>
           <Link
             to="/print-qr"
@@ -129,12 +131,13 @@ export function Nav() {
               </Link>
             </li>
           ))}
-          <li className="pt-4 pb-2 flex flex-col gap-3"
-              style={{
-                opacity: open ? 1 : 0,
-                transform: open ? "translateY(0)" : "translateY(-6px)",
-                transition: `all 0.3s ease ${links.length * 60}ms`,
-              }}
+          <li
+            className="pt-4 pb-2 flex flex-col gap-3"
+            style={{
+              opacity: open ? 1 : 0,
+              transform: open ? "translateY(0)" : "translateY(-6px)",
+              transition: `all 0.3s ease ${links.length * 60}ms`,
+            }}
           >
             <Link
               to="/"

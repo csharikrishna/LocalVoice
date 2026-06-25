@@ -44,115 +44,110 @@ function PrintQrRoute() {
 
   return (
     <div className="min-h-screen bg-slate-100 flex flex-col lg:flex-row gap-12 p-8 lg:p-12 print:block print:p-0 print:bg-white">
-      <style
-        dangerouslySetInnerHTML={{
-          __html: `
-            @media print {
-              @page {
-                size: A4 portrait;
-                margin: 0;
-              }
+      <style>{`
+        @media print {
+          @page {
+            size: A4 portrait;
+            margin: 0;
+          }
 
-              body, html {
-                -webkit-print-color-adjust: exact;
-                print-color-adjust: exact;
-                margin: 0 !important;
-                padding: 0 !important;
-                height: 100% !important;
-                overflow: hidden !important;
-              }
-            }
-          `,
-        }}
-      />
+          body, html {
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+            margin: 0 !important;
+            padding: 0 !important;
+            height: 100% !important;
+            overflow: hidden !important;
+          }
+        }
+      `}</style>
 
       {/* Poster Container (Left Side) */}
       <div className="flex-1 flex justify-center lg:justify-end print:block print:justify-start">
         <div className="relative w-[210mm] h-[297mm] print:w-full print:h-[99vh] bg-[#FAF9F6] shadow-2xl print:shadow-none overflow-hidden flex flex-col items-center justify-center text-center px-16">
+          {/* Decorative elements */}
+          <div className="absolute inset-0 pointer-events-none">
+            <div className="absolute top-10 right-10 w-44 h-44 rounded-full border border-slate-200" />
+            <div className="absolute top-16 right-16 w-24 h-24 rounded-full border border-slate-100" />
 
-        {/* Decorative elements */}
-        <div className="absolute inset-0 pointer-events-none">
-          <div className="absolute top-10 right-10 w-44 h-44 rounded-full border border-slate-200" />
-          <div className="absolute top-16 right-16 w-24 h-24 rounded-full border border-slate-100" />
-
-          <div className="absolute bottom-12 left-12 w-72 h-72 rounded-full border border-slate-100" />
-          <div className="absolute bottom-24 left-24 w-40 h-40 rounded-full border border-slate-100" />
-        </div>
-
-        {/* Brand */}
-        <div className="mb-8 relative z-10">
-          <p className="text-xs uppercase tracking-[0.6em] text-slate-500 mb-4 font-bold">
-            {t.civicPlatform}
-          </p>
-
-          <h1 className="text-[5.5rem] font-black tracking-[-0.08em] text-slate-950 leading-none">
-            {(import.meta.env.VITE_APP_NAME || "LocalVoice").toUpperCase()}
-          </h1>
-        </div>
-
-        {/* Headline */}
-        <div className="mb-10 relative z-10">
-          <h2
-            className={`font-black text-slate-950 tracking-tight ${t.headlineClass || "text-5xl leading-[1.05]"}`}
-            dangerouslySetInnerHTML={{ __html: t.headline }}
-          />
-        </div>
-
-        {/* QR */}
-        <div className="relative z-10 mb-8">
-          <div className="rounded-[40px] bg-white border border-slate-200 p-8 shadow-sm">
-            {url && (
-              <QRCodeSVG
-                value={url}
-                size={340}
-                level="H"
-                includeMargin={false}
-                fgColor="#020617"
-                bgColor="#FFFFFF"
-              />
-            )}
-          </div>
-        </div>
-
-        {/* Description */}
-        <div className="relative z-10 max-w-3xl pb-12">
-          <p className={`text-slate-600 leading-relaxed px-4 font-medium ${t.descClass || "text-xl"}`}>
-            {t.scanToReport}
-          </p>
-
-          {/* Categories */}
-          <div className="flex flex-wrap justify-center gap-3 mt-8">
-            {t.categories.map((item: string) => (
-              <div
-                key={item}
-                className={`px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-700 font-bold shadow-sm ${t.categoryClass || "text-base"}`}
-              >
-                {item}
-              </div>
-            ))}
+            <div className="absolute bottom-12 left-12 w-72 h-72 rounded-full border border-slate-100" />
+            <div className="absolute bottom-24 left-24 w-40 h-40 rounded-full border border-slate-100" />
           </div>
 
-          {/* CTA */}
-          <div className="mt-10">
-            <div className="inline-flex items-center rounded-full bg-slate-950 text-white px-8 py-4 text-xl font-bold shadow-lg">
-              {t.scanWithCamera}
+          {/* Brand */}
+          <div className="mb-8 relative z-10">
+            <p className="text-xs uppercase tracking-[0.6em] text-slate-500 mb-4 font-bold">
+              {t.civicPlatform}
+            </p>
+
+            <h1 className="text-[5.5rem] font-black tracking-[-0.08em] text-slate-950 leading-none">
+              {(import.meta.env.VITE_APP_NAME || "LocalVoice").toUpperCase()}
+            </h1>
+          </div>
+
+          {/* Headline */}
+          <div className="mb-10 relative z-10">
+            <h2
+              className={`font-black text-slate-950 tracking-tight ${t.headlineClass || "text-5xl leading-[1.05]"}`}
+              dangerouslySetInnerHTML={{ __html: t.headline }}
+            />
+          </div>
+
+          {/* QR */}
+          <div className="relative z-10 mb-8">
+            <div className="rounded-[40px] bg-white border border-slate-200 p-8 shadow-sm">
+              {url && (
+                <QRCodeSVG
+                  value={url}
+                  size={340}
+                  level="H"
+                  includeMargin={false}
+                  fgColor="#020617"
+                  bgColor="#FFFFFF"
+                />
+              )}
+            </div>
+          </div>
+
+          {/* Description */}
+          <div className="relative z-10 max-w-3xl pb-12">
+            <p
+              className={`text-slate-600 leading-relaxed px-4 font-medium ${t.descClass || "text-xl"}`}
+            >
+              {t.scanToReport}
+            </p>
+
+            {/* Categories */}
+            <div className="flex flex-wrap justify-center gap-3 mt-8">
+              {t.categories.map((item: string) => (
+                <div
+                  key={item}
+                  className={`px-4 py-2 rounded-full border border-slate-200 bg-white text-slate-700 font-bold shadow-sm ${t.categoryClass || "text-base"}`}
+                >
+                  {item}
+                </div>
+              ))}
             </div>
 
-            <p className="mt-4 text-slate-500 text-base font-semibold">
-              {t.noAppNeeded}
+            {/* CTA */}
+            <div className="mt-10">
+              <div className="inline-flex items-center rounded-full bg-slate-950 text-white px-8 py-4 text-xl font-bold shadow-lg">
+                {t.scanWithCamera}
+              </div>
+
+              <p className="mt-4 text-slate-500 text-base font-semibold">{t.noAppNeeded}</p>
+            </div>
+          </div>
+
+          {/* Footer */}
+          <div className="absolute bottom-8 left-0 right-0 text-center">
+            <div className="w-24 h-px bg-slate-300 mx-auto mb-4" />
+
+            <p className="text-sm tracking-[0.25em] uppercase text-slate-400 font-bold">
+              {t.makingCommunitiesBetter}
             </p>
           </div>
         </div>
-
-        {/* Footer */}
-        <div className="absolute bottom-8 left-0 right-0 text-center">
-          <div className="w-24 h-px bg-slate-300 mx-auto mb-4" />
-
-          <p className="text-sm tracking-[0.25em] uppercase text-slate-400 font-bold">
-            {t.makingCommunitiesBetter}
-          </p>
-        </div>
-      </div>
       </div>
 
       {/* Sidebar Controls (Right Side) */}
@@ -167,7 +162,9 @@ function PrintQrRoute() {
           </Link>
 
           <h3 className="text-2xl font-bold text-slate-900 mb-2">Print Settings</h3>
-          <p className="text-slate-500 mb-6">Customize the poster before printing to distribute in your local neighborhood.</p>
+          <p className="text-slate-500 mb-6">
+            Customize the poster before printing to distribute in your local neighborhood.
+          </p>
         </div>
 
         <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-sm">
@@ -183,9 +180,9 @@ function PrintQrRoute() {
               <span className="font-semibold text-slate-800">
                 {POSTER_TRANSLATIONS[activeLang]?.name || "Select Language"}
               </span>
-              <ChevronDown 
-                size={18} 
-                className={`text-slate-400 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`} 
+              <ChevronDown
+                size={18}
+                className={`text-slate-400 transition-transform duration-200 ${dropdownOpen ? "rotate-180" : ""}`}
               />
             </button>
 
@@ -199,13 +196,13 @@ function PrintQrRoute() {
                       setDropdownOpen(false);
                     }}
                     className={`w-full text-left px-4 py-2.5 hover:bg-slate-50 transition-colors flex items-center justify-between ${
-                      activeLang === key ? "bg-slate-50 text-slate-900 font-bold" : "text-slate-600 font-medium"
+                      activeLang === key
+                        ? "bg-slate-50 text-slate-900 font-bold"
+                        : "text-slate-600 font-medium"
                     }`}
                   >
                     {val.name}
-                    {activeLang === key && (
-                      <span className="w-2 h-2 rounded-full bg-slate-900" />
-                    )}
+                    {activeLang === key && <span className="w-2 h-2 rounded-full bg-slate-900" />}
                   </button>
                 ))}
               </div>

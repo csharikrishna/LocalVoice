@@ -1,5 +1,5 @@
-import i18n from 'i18next';
-import { initReactI18next } from 'react-i18next';
+import i18n from "i18next";
+import { initReactI18next } from "react-i18next";
 
 // the translations
 // (tip move them in a JSON file and import them,
@@ -41,7 +41,8 @@ const resources = {
         failed: "Failed — try again",
         submit: "Submit report",
         dailyLimit: "Daily Limit Reached",
-        dailyLimitDesc: "You have submitted the maximum of 3 reports for today. Thank you for your civic engagement! Please come back tomorrow to submit more.",
+        dailyLimitDesc:
+          "You have submitted the maximum of 3 reports for today. Thank you for your civic engagement! Please come back tomorrow to submit more.",
         successMsg: "Report submitted — thank you!",
         trackingToken: "Your tracking token:",
         saveToken: "Save this token to check your complaint status.",
@@ -58,8 +59,8 @@ const resources = {
         publictoilet: "Public Toilet",
         park: "Park / Garden",
         other: "Other",
-      }
-    }
+      },
+    },
   },
   te: {
     translation: {
@@ -97,7 +98,8 @@ const resources = {
         failed: "విఫలమైంది — మళ్లీ ప్రయత్నించండి",
         submit: "నివేదికను సమర్పించండి",
         dailyLimit: "రోజువారీ పరిమితి చేరుకున్నారు",
-        dailyLimitDesc: "మీరు ఈరోజు గరిష్టంగా 3 నివేదికలను సమర్పించారు. మీ పౌర నిబద్ధతకు ధన్యవాదాలు! దయచేసి మరిన్ని సమర్పించడానికి రేపు తిరిగి రండి.",
+        dailyLimitDesc:
+          "మీరు ఈరోజు గరిష్టంగా 3 నివేదికలను సమర్పించారు. మీ పౌర నిబద్ధతకు ధన్యవాదాలు! దయచేసి మరిన్ని సమర్పించడానికి రేపు తిరిగి రండి.",
         successMsg: "నివేదిక సమర్పించబడింది — ధన్యవాదాలు!",
         trackingToken: "మీ ట్రాకింగ్ టోకెన్:",
         saveToken: "మీ ఫిర్యాదు స్థితిని తనిఖీ చేయడానికి ఈ టోకెన్‌ను సేవ్ చేయండి.",
@@ -114,9 +116,9 @@ const resources = {
         publictoilet: "పబ్లిక్ టాయిలెట్",
         park: "పార్క్ / గార్డెన్",
         other: "ఇతర",
-      }
-    }
-  }
+      },
+    },
+  },
 };
 
 i18n
@@ -128,8 +130,8 @@ i18n
     // if you're using a language detector, do not define the lng option
 
     interpolation: {
-      escapeValue: false // react already safes from xss
-    }
+      escapeValue: false, // react already safes from xss
+    },
   });
 
 export default i18n;

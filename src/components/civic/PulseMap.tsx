@@ -73,21 +73,23 @@ export function PulseMap() {
           fill={active ? "var(--primary)" : "var(--border-hover)"}
           opacity={active ? 1 : 0.6}
           style={{ transition: "fill 0.2s, opacity 0.2s" }}
-        />
+        />,
       );
     }
   }
 
   return (
     <div className="relative w-full" aria-hidden="true">
-      <svg
-        viewBox={`0 0 ${width} ${height}`}
-        className="w-full h-auto"
-        style={{ maxHeight: 520 }}
-      >
+      <svg viewBox={`0 0 ${width} ${height}`} className="w-full h-auto" style={{ maxHeight: 520 }}>
         <defs>
           <pattern id="gridlines" width="36" height="36" patternUnits="userSpaceOnUse">
-            <path d="M 36 0 L 0 0 0 36" fill="none" stroke="var(--border)" strokeWidth="1" opacity="0.5" />
+            <path
+              d="M 36 0 L 0 0 0 36"
+              fill="none"
+              stroke="var(--border)"
+              strokeWidth="1"
+              opacity="0.5"
+            />
           </pattern>
         </defs>
         <rect width={width} height={height} fill="url(#gridlines)" opacity="0.4" />
@@ -111,24 +113,61 @@ export function PulseMap() {
       </svg>
 
       {/* Floating info cards */}
-      <FloatCard top="8%" left="4%" delay={0} dot="bg-[color:var(--warning)]" title="Streetlight #TL-112" sub="Reported 2 mins ago" />
-      <FloatCard top="44%" right="2%" delay={1} dot="bg-[color:var(--accent)]" title="Water Leak — Ward 4" sub="In Progress" />
-      <FloatCard bottom="6%" left="12%" delay={2} dot="bg-[color:var(--success)]" title="Pothole #RD-088" sub="Resolved" />
+      <FloatCard
+        top="8%"
+        left="4%"
+        delay={0}
+        dot="bg-[color:var(--warning)]"
+        title="Streetlight #TL-112"
+        sub="Reported 2 mins ago"
+      />
+      <FloatCard
+        top="44%"
+        right="2%"
+        delay={1}
+        dot="bg-[color:var(--accent)]"
+        title="Water Leak — Ward 4"
+        sub="In Progress"
+      />
+      <FloatCard
+        bottom="6%"
+        left="12%"
+        delay={2}
+        dot="bg-[color:var(--success)]"
+        title="Pothole #RD-088"
+        sub="Resolved"
+      />
     </div>
   );
 }
 
 function FloatCard({
-  top, left, right, bottom, delay, dot, title, sub,
+  top,
+  left,
+  right,
+  bottom,
+  delay,
+  dot,
+  title,
+  sub,
 }: {
-  top?: string; left?: string; right?: string; bottom?: string;
-  delay: number; dot: string; title: string; sub: string;
+  top?: string;
+  left?: string;
+  right?: string;
+  bottom?: string;
+  delay: number;
+  dot: string;
+  title: string;
+  sub: string;
 }) {
   return (
     <div
       className="absolute flex items-center gap-2 sm:gap-2.5 bg-white rounded-[12px] sm:rounded-[16px] px-2.5 py-1.5 sm:px-3.5 sm:py-2.5 scale-[0.85] sm:scale-100 origin-center"
       style={{
-        top, left, right, bottom,
+        top,
+        left,
+        right,
+        bottom,
         boxShadow: "var(--shadow-md)",
         animation: `float-y 3s ease-in-out ${delay}s infinite`,
         whiteSpace: "nowrap",
@@ -136,7 +175,9 @@ function FloatCard({
     >
       <span className={`inline-block w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full ${dot}`} />
       <div className="leading-tight">
-        <div className="text-[10px] sm:text-[11px] font-semibold text-[color:var(--text-primary)]">{title}</div>
+        <div className="text-[10px] sm:text-[11px] font-semibold text-[color:var(--text-primary)]">
+          {title}
+        </div>
         <div className="text-[9px] sm:text-[11px] text-[color:var(--text-muted)]">{sub}</div>
       </div>
     </div>
