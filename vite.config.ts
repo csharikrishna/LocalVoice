@@ -1,6 +1,7 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
 import { tanstackStart } from "@tanstack/react-start/plugin/vite";
+import { nitro } from "nitro/vite";
 import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
@@ -26,10 +27,9 @@ export default defineConfig(({ isSsrBuild }) => ({
     },
   },
   plugins: [
-    tanstackStart({
-      server: {
-        preset: "vercel",
-      },
+    tanstackStart(),
+    nitro({
+      preset: "vercel",
     }),
     tailwindcss(),
     tsconfigPaths(),
