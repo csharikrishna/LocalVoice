@@ -26,7 +26,11 @@ export default defineConfig(({ isSsrBuild }) => ({
     },
   },
   plugins: [
-    tanstackStart(),
+    tanstackStart({
+      server: {
+        preset: "vercel",
+      },
+    }),
     tailwindcss(),
     tsconfigPaths(),
     react(),
