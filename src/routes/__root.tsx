@@ -15,6 +15,8 @@ import { Nav } from "@/components/civic/Nav";
 import { Footer } from "@/components/civic/Footer";
 import { SEO } from "@/components/civic/SEO";
 import { Toaster } from "sonner";
+import { I18nextProvider } from "react-i18next";
+import i18n from "../lib/i18n";
 
 function NotFoundComponent() {
   return (
@@ -196,19 +198,21 @@ function RootComponent() {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <div className="relative min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] antialiased selection:bg-slate-950 selection:text-white">
-        {/* Optional subtle texture layer */}
-        <div className="pointer-events-none fixed inset-0 opacity-[0.015]" />
+      <I18nextProvider i18n={i18n}>
+        <div className="relative min-h-screen bg-[color:var(--bg)] text-[color:var(--text-primary)] antialiased selection:bg-slate-950 selection:text-white">
+          {/* Optional subtle texture layer */}
+          <div className="pointer-events-none fixed inset-0 opacity-[0.015]" />
 
-        {!isPrintQr && <Nav />}
+          {!isPrintQr && <Nav />}
 
-        <main className="relative">
-          <Outlet />
-        </main>
+          <main className="relative">
+            <Outlet />
+          </main>
 
-        {!isPrintQr && <Footer />}
-        <Toaster position="top-right" richColors />
-      </div>
+          {!isPrintQr && <Footer />}
+          <Toaster position="top-right" richColors />
+        </div>
+      </I18nextProvider>
     </QueryClientProvider>
   );
 }

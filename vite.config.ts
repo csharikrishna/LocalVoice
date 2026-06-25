@@ -10,6 +10,9 @@ export default defineConfig(({ isSsrBuild }) => ({
   server: {
     allowedHosts: true,
   },
+  ssr: {
+    external: ["firebase-admin"],
+  },
   build: {
     chunkSizeWarningLimit: 1000,
     rollupOptions: {
