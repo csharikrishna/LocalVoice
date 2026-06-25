@@ -35,7 +35,7 @@ export default defineConfig(({ isSsrBuild }) => ({
     tsconfigPaths(),
     react(),
     VitePWA({
-      registerType: "autoUpdate",
+      injectRegister: null,
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
         name: "LocalVoice - Civic Issue Reporting",
