@@ -72,6 +72,7 @@ export default defineConfig(({ isSsrBuild }) => ({
     tsconfigPaths(),
     react(),
     VitePWA({
+      disable: !!process.env.VERCEL, // Disable on Vercel due to TanStack Start route crawling build conflicts
       injectRegister: null,
       includeAssets: ["favicon.ico", "apple-touch-icon.png", "masked-icon.svg"],
       manifest: {
