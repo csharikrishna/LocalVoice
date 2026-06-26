@@ -92,3 +92,10 @@ export const getAdminRole = createServerFn({ method: "POST" })
     const { handleGetAdminRole } = await import("./admin.server");
     return handleGetAdminRole(data.adminToken);
   });
+
+export const revokeInvite = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string(), inviteId: z.string() }))
+  .handler(async ({ data }) => {
+    const { handleRevokeInvite } = await import("./admin.server");
+    return handleRevokeInvite(data.adminToken, data.inviteId);
+  });

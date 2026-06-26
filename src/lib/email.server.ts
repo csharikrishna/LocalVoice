@@ -210,3 +210,46 @@ export async function sendStaffInvitationEmail(email: string, role: string, depa
     throw error;
   }
 }
+
+export async function sendRevokeEmail(email: string, role: string, department: string | null) {
+  const mailer = getTransporter();
+  if (!mailer) return;
+
+  const html = `
+    <div style="font-family: 'Inter', system-ui, sans-serif; max-width: 600px; margin: 0 auto; padding: 24px; border: 1px solid #e2e8f0; border-radius: 12px; background-color: #ffffff;">
+      <div style="text-align: center; margin-bottom: 24px;">
+        <div style="display: inline-flex; align-items: center; justify-content: center; width: 48px; height: 48px; background-color: #fee2e2; border-radius: 50%; margin-bottom: 16px;">
+          <span style="font-size: 24px;">❌</span>
+        </div>
+        <h2 style="color: #0f172a; margin: 0; font-size: 24px;">Invitation Revoked</h2>
+      </div>
+      
+      <p style="color: #475569; font-size: 16px; line-height: 1.6; margin-bottom: 24px;">
+        We are writing to inform you that your invitation to join the <strong>LocalVoice Admin Portal</strong> as a ${role.replace("_", " ")} has been revoked and is no longer valid.
+      </p>
+      
+      <p style="color: #475569; font-size: 15px; line-height: 1.6; margin-bottom: 32px;">
+        If you believe this was a mistake, please reach out to the central administration team. Otherwise, no further action is required from you.
+      </p>
+
+      <div style="border-top: 1px solid #e2e8f0; padding-top: 24px; text-align: center;">
+        <p style="color: #94a3b8; font-size: 13px; margin: 0;">
+          LocalVoice Admin Team
+        </p>
+      </div>
+    </div>
+  `;
+
+  try {
+    const info = await mailer.sendMail({
+      from: FROM_EMAIL,
+      to: email,
+      subject: "Invitation Revoked - LocalVoice",
+      html,
+    });
+    console.log(`Staff revocation email sent successfully to ${email}. Message ID: ${info.messageId}`);
+  } catch (error) {
+    console.error("Error sending staff revocation email:", error);
+    // Don't throw here, just log, since the invite is already deleted in DB
+  }
+}

@@ -1,13 +1,14 @@
 import React, { useState } from "react";
 import { StaffMember } from "../../types";
-import { Shield, ChevronDown, ChevronRight, UserCircle, Building2, UserX, UserCheck } from "lucide-react";
+import { Shield, ChevronDown, ChevronRight, UserCircle, Building2, UserX, UserCheck, X } from "lucide-react";
 
 interface Props {
   staff: StaffMember[];
   onToggleStatus?: (email: string, currentStatus: string) => void;
+  onRevokeInvite?: (inviteId: string) => void;
 }
 
-export function StaffHierarchyView({ staff, onToggleStatus }: Props) {
+export function StaffHierarchyView({ staff, onToggleStatus, onRevokeInvite }: Props) {
   const admins = staff.filter((s) => s.role === "admin");
   const departments = Array.from(new Set(staff.map((s) => s.department).filter(Boolean))) as string[];
 
@@ -22,7 +23,7 @@ export function StaffHierarchyView({ staff, onToggleStatus }: Props) {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pl-8 border-l-2 border-blue-100">
             {admins.map((admin) => (
-              <StaffCard key={admin.id} member={admin} onToggleStatus={onToggleStatus} />
+              <StaffCard key={admin.id} member={admin} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
             ))}
             {admins.length === 0 && <p className="text-slate-500 italic">No central dispatchers found.</p>}
           </div>
@@ -31,7 +32,7 @@ export function StaffHierarchyView({ staff, onToggleStatus }: Props) {
         {/* Departments */}
         <div className="space-y-6">
           {departments.map((dept) => (
-            <DepartmentNode key={dept} department={dept} staff={staff.filter((s) => s.department === dept)} onToggleStatus={onToggleStatus} />
+            <DepartmentNode key={dept} department={dept} staff={staff.filter((s) => s.department === dept)} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
           ))}
         </div>
       </div>
@@ -39,7 +40,7 @@ export function StaffHierarchyView({ staff, onToggleStatus }: Props) {
   );
 }
 
-function DepartmentNode({ department, staff, onToggleStatus }: { department: string; staff: StaffMember[]; onToggleStatus?: (e: string, s: string) => void }) {
+function DepartmentNode({ department, staff, onToggleStatus, onRevokeInvite }: { department: string; staff: StaffMember[]; onToggleStatus?: (e: string, s: string) => void; onRevokeInvite?: (id: string) => void; }) {
   const [expanded, setExpanded] = useState(true);
   
   const supervisors = staff.filter((s) => s.role === "department_admin");
@@ -68,7 +69,7 @@ function DepartmentNode({ department, staff, onToggleStatus }: { department: str
               <h5 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Supervisors</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {supervisors.map((s) => (
-                  <StaffCard key={s.id} member={s} onToggleStatus={onToggleStatus} />
+                  <StaffCard key={s.id} member={s} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
                 ))}
               </div>
             </div>
@@ -82,7 +83,7 @@ function DepartmentNode({ department, staff, onToggleStatus }: { department: str
               <h5 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Field Team</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {fieldWorkers.map((w) => (
-                  <StaffCard key={w.id} member={w} onToggleStatus={onToggleStatus} />
+                  <StaffCard key={w.id} member={w} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
                 ))}
               </div>
             </div>
@@ -95,7 +96,7 @@ function DepartmentNode({ department, staff, onToggleStatus }: { department: str
   );
 }
 
-function StaffCard({ member, onToggleStatus }: { member: StaffMember; onToggleStatus?: (e: string, s: string) => void }) {
+function StaffCard({ member, onToggleStatus, onRevokeInvite }: { member: StaffMember; onToggleStatus?: (e: string, s: string) => void; onRevokeInvite?: (id: string) => void; }) {
   const isInvite = (member as any).isInvite;
 
   return (
@@ -135,17 +136,29 @@ function StaffCard({ member, onToggleStatus }: { member: StaffMember; onToggleSt
           {member.status === "pending" ? "Invite Pending" : member.status === "rejected" ? "Invite Rejected" : member.status.charAt(0).toUpperCase() + member.status.slice(1)}
         </span>
 
-        {!isInvite && onToggleStatus && (
-          <button
-            onClick={() => onToggleStatus(member.email, member.status)}
-            className={`p-1.5 rounded-md transition-colors ${
-              member.status === "active" ? "text-red-500 hover:bg-red-50" : "text-green-600 hover:bg-green-50"
-            }`}
-            title={member.status === "active" ? "Suspend Account" : "Restore Account"}
-          >
-            {member.status === "active" ? <UserX size={14} /> : <UserCheck size={14} />}
-          </button>
-        )}
+        <div className="flex gap-1">
+          {!isInvite && onToggleStatus && (
+            <button
+              onClick={() => onToggleStatus(member.email, member.status)}
+              className={`p-1.5 rounded-md transition-colors ${
+                member.status === "active" ? "text-red-500 hover:bg-red-50" : "text-green-600 hover:bg-green-50"
+              }`}
+              title={member.status === "active" ? "Suspend Account" : "Restore Account"}
+            >
+              {member.status === "active" ? <UserX size={14} /> : <UserCheck size={14} />}
+            </button>
+          )}
+
+          {isInvite && (member.status === "pending" || member.status === "rejected") && onRevokeInvite && (
+            <button
+              onClick={() => onRevokeInvite(member.id)}
+              className="p-1.5 rounded-md transition-colors text-red-500 hover:bg-red-50"
+              title="Revoke Invitation"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );

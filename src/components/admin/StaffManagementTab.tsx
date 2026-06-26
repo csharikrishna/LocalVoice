@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../../lib/firebase";
-import { createStaff, getStaff, toggleStaffStatus, getInvites } from "../../lib/api/admin.functions";
+import { createStaff, getStaff, toggleStaffStatus, getInvites, revokeInvite } from "../../lib/api/admin.functions";
 import {
   Loader2,
   UserPlus,
@@ -64,20 +64,48 @@ export function StaffManagementTab() {
     fetchStaff();
   }, []);
 
-  const handleToggleStatus = async (email: string, currentStatus: string) => {
+  const handleToggleStatus = async (staffEmail: string, currentStatus: "active" | "suspended" | "pending" | "rejected") => {
     try {
-      const newStatus = currentStatus === "active" ? "suspended" : "active";
       const token = await auth.currentUser?.getIdToken();
-      if (!token) throw new Error("Not authenticated");
-      
-      const res = await toggleStaffStatus({ data: { adminToken: token, staffId: email, status: newStatus } });
-      if (!res.ok) throw new Error(res.message);
-      
-      setStaff((prev) => prev.map((s) => (s.email === email ? { ...s, status: newStatus } : s)));
-      toast.success(`Staff member ${newStatus}`);
+      if (!token) return;
+
+      const staffMember = staff.find((s) => s.email === staffEmail);
+      if (!staffMember) return;
+
+      const newStatus = currentStatus === "active" ? "suspended" : "active";
+
+      await toggleStaffStatus({
+        data: {
+          adminToken: token,
+          staffId: staffMember.id,
+          status: newStatus,
+        },
+      });
+      toast.success(`Staff status updated to ${newStatus}`);
+      fetchStaff();
     } catch (err) {
-      console.error("Failed to update status", err);
-      toast.error("Failed to update status");
+      console.error("Failed to update status:", err);
+      toast.error("Failed to update staff status");
+    }
+  };
+
+  const handleRevokeInvite = async (inviteId: string) => {
+    if (!window.confirm("Are you sure you want to revoke this invitation? This will permanently delete it and send an email notification to the user.")) return;
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      await revokeInvite({
+        data: {
+          adminToken: token,
+          inviteId,
+        },
+      });
+      toast.success("Invitation successfully revoked");
+      fetchStaff();
+    } catch (err) {
+      console.error("Failed to revoke invite:", err);
+      toast.error("Failed to revoke invitation");
     }
   };
 
@@ -179,7 +207,7 @@ export function StaffManagementTab() {
       </div>
 
       {viewMode === "tree" ? (
-        <StaffHierarchyView staff={staff} onToggleStatus={handleToggleStatus} />
+        <StaffHierarchyView staff={staff} onToggleStatus={handleToggleStatus} onRevokeInvite={handleRevokeInvite} />
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-600">
@@ -237,7 +265,7 @@ export function StaffManagementTab() {
                 <td className="px-6 py-4 text-right">
                   {!(s as any).isInvite && (
                     <button
-                      onClick={() => handleToggleStatus(s.email, s.status)}
+                      onClick={() => handleToggleStatus(s.email, s.status as any)}
                       className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
                         s.status === "active"
                           ? "text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200"
@@ -250,9 +278,17 @@ export function StaffManagementTab() {
                         </>
                       ) : (
                         <>
-                          <UserCheck size={14} /> Restore
+                          <UserCheck size={14} /> Reactivate
                         </>
                       )}
+                    </button>
+                  )}
+                  {(s as any).isInvite && (s.status === "pending" || s.status === "rejected") && (
+                    <button
+                      onClick={() => handleRevokeInvite(s.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200"
+                    >
+                      <X size={14} /> Revoke
                     </button>
                   )}
                 </td>
