@@ -195,8 +195,8 @@ function PublicMapRoute() {
         canonical={`${import.meta.env.VITE_APP_URL || "https://localvoice.web.app"}/map`}
       />
       <div className="pt-24 lg:pt-28 min-h-screen bg-slate-50 flex flex-col">
-        <div className="container-x py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 z-10 relative">
-          <div className="w-full sm:w-auto">
+        <div className="container-x py-6 flex flex-col lg:flex-row justify-between items-start lg:items-end gap-6 z-10 relative">
+          <div className="w-full lg:w-auto">
             <Reveal>
               <span className="eyebrow">Live Pulse</span>
             </Reveal>
@@ -212,52 +212,53 @@ function PublicMapRoute() {
             </Reveal>
           </div>
 
-          <Reveal delay={200} className="w-full sm:w-auto mt-2 sm:mt-0">
-            <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto overflow-hidden">
-              <div className="flex flex-col flex-1 sm:flex-none">
-                <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total</span>
-                <span className="text-2xl font-black text-slate-900">{complaints.length}</span>
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-end gap-4 w-full lg:w-auto">
+            <Reveal delay={200} className="w-full sm:w-auto">
+              <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
+                <div className="flex flex-col items-center sm:items-start flex-1 sm:flex-none">
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total</span>
+                  <span className="text-2xl font-black text-slate-900">{complaints.length}</span>
+                </div>
+                <div className="w-px bg-slate-200"></div>
+                <div className="flex flex-col items-center sm:items-start flex-1 sm:flex-none">
+                  <span className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider">Resolved</span>
+                  <span className="text-2xl font-black text-emerald-600">
+                    {complaints.filter(c => c.status === "closed").length}
+                  </span>
+                </div>
+                <div className="w-px bg-slate-200"></div>
+                <div className="flex flex-col items-center sm:items-start flex-1 sm:flex-none">
+                  <span className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider">In Progress</span>
+                  <span className="text-2xl font-black text-amber-600">
+                    {complaints.filter(c => c.status === "working").length}
+                  </span>
+                </div>
               </div>
-              <div className="w-px bg-slate-200"></div>
-              <div className="flex flex-col flex-1 sm:flex-none">
-                <span className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider">Resolved</span>
-                <span className="text-2xl font-black text-emerald-600">
-                  {complaints.filter(c => c.status === "closed").length}
-                </span>
-              </div>
-              <div className="w-px bg-slate-200 hidden sm:block"></div>
-              <div className="flex flex-col hidden sm:flex">
-                <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">In Progress</span>
-                <span className="text-2xl font-black text-amber-600">
-                  {complaints.filter(c => c.status === "working").length}
-                </span>
-              </div>
-            </div>
-          </Reveal>
+            </Reveal>
 
-          <Reveal delay={240} className="w-full sm:w-auto mt-2 sm:mt-0">
-            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
-              <div className="flex bg-slate-100 rounded-lg p-1 flex-1 sm:flex-none">
-                <button
-                  onClick={() => setViewMode("map")}
-                  className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "map" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-                >
-                  <MapIcon size={16} /> Map
-                </button>
-                <button
-                  onClick={() => setViewMode("list")}
-                  className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
-                >
-                  <List size={16} /> List
-                </button>
-              </div>
-              <div className="h-6 w-px bg-slate-200 shrink-0"></div>
-              <div className="relative shrink-0">
-                <button
-                  onClick={() => setIsFilterOpen(!isFilterOpen)}
-                  className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-white border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
-                >
-                  <Filter size={14} className="text-slate-400" />
+            <Reveal delay={240} className="w-full sm:w-auto">
+              <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
+                <div className="flex bg-slate-100 rounded-lg p-1 flex-1 sm:flex-none">
+                  <button
+                    onClick={() => setViewMode("map")}
+                    className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "map" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    <MapIcon size={16} /> Map
+                  </button>
+                  <button
+                    onClick={() => setViewMode("list")}
+                    className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  >
+                    <List size={16} /> List
+                  </button>
+                </div>
+                <div className="h-6 w-px bg-slate-200 shrink-0"></div>
+                <div className="relative shrink-0 flex-1 sm:flex-none">
+                  <button
+                    onClick={() => setIsFilterOpen(!isFilterOpen)}
+                    className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-white border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
+                  >
+                    <Filter size={14} className="text-slate-400" />
                   <span className="hidden sm:inline">
                     {filter === "all" ? "All Issues" : filter === "open" ? "Unresolved" : "Resolved"}
                   </span>
