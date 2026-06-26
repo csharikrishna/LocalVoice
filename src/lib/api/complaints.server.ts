@@ -231,7 +231,6 @@ async function findDuplicate(category: CategoryId, coordinates: Coords | null) {
   if (!coordinates || category === "other") return null;
 
   try {
-    const { getFirebaseAdminDb } = await import("./admin");
     if (getFirebaseAdminDb()) {
       const adminDuplicate = await findDuplicateWithAdmin(category, coordinates);
       return adminDuplicate;
@@ -329,7 +328,6 @@ async function createComplaintWithRest(input: SubmitComplaintInput, token: strin
 
 async function createComplaint(input: SubmitComplaintInput, token: string, photoURL: string | null) {
   try {
-    const { getFirebaseAdminDb } = await import("./admin");
     if (getFirebaseAdminDb()) {
       const adminId = await createComplaintWithAdmin(input, token, photoURL);
       if (adminId) return adminId;
