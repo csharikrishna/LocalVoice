@@ -6,12 +6,30 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import tailwindcss from "@tailwindcss/vite";
 import { VitePWA } from "vite-plugin-pwa";
 
+// CJS-only packages that use __dirname/__filename and must NOT be bundled
+// into Nitro's ESM (.mjs) output. Keeping them external lets Node resolve
+// them from node_modules in their original CJS format where __dirname works.
+const CJS_EXTERNALS = [
+  "firebase-admin",
+  "firebase-admin/app",
+  "firebase-admin/firestore",
+  "firebase-admin/auth",
+  "@grpc/grpc-js",
+  "@grpc/proto-loader",
+  "google-gax",
+  "google-auth-library",
+  "@google-cloud/firestore",
+  "@google-cloud/storage",
+  "protobufjs",
+  "proto3-json-serializer",
+];
+
 export default defineConfig(({ isSsrBuild }) => ({
   server: {
     allowedHosts: true,
   },
   ssr: {
-    external: ["firebase-admin"],
+    external: CJS_EXTERNALS,
   },
   build: {
     chunkSizeWarningLimit: 1000,
@@ -33,15 +51,20 @@ export default defineConfig(({ isSsrBuild }) => ({
     tanstackStart(),
     nitro({
       preset: "vercel",
+      rollupConfig: {
+        output: {
+          // Inject CJS compat shims so any remaining bundled code that
+          // references __dirname / __filename won't crash at runtime.
+          banner: [
+            `import { fileURLToPath as _fURLtP } from 'node:url';`,
+            `import { dirname as _dn } from 'node:path';`,
+            `if(typeof globalThis.__filename==='undefined'){try{globalThis.__filename=_fURLtP(import.meta.url)}catch(_){}}`,
+            `if(typeof globalThis.__dirname==='undefined'){try{globalThis.__dirname=_dn(globalThis.__filename||'')}catch(_){}}`,
+          ].join("\n"),
+        },
+      },
       externals: {
-        external: [
-          "firebase-admin",
-          "firebase-admin/app",
-          "firebase-admin/firestore",
-          "firebase-admin/auth",
-          "@grpc/grpc-js",
-          "google-gax",
-        ],
+        external: CJS_EXTERNALS,
       },
     }),
     tailwindcss(),

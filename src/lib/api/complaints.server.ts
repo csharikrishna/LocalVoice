@@ -61,6 +61,18 @@ async function verifyRecaptcha(token: string) {
   }
 }
 
+export async function handleSendReceiptEmail(data: { token: string; email: string; base64Image: string }) {
+  if (!data.email) return { ok: false };
+  try {
+    const { sendSubmissionEmail } = await import("../email.server");
+    await sendSubmissionEmail(data.email, data.token, "Your Local Issue", "various", null, data.base64Image);
+    return { ok: true };
+  } catch (err) {
+    console.error("Failed to send receipt email:", err);
+    return { ok: false };
+  }
+}
+
 async function uploadBase64ToCloudinary(base64: string): Promise<string> {
   const cloudName = getEnv("VITE_CLOUDINARY_CLOUD_NAME");
   const uploadPreset = getEnv("VITE_CLOUDINARY_UPLOAD_PRESET");
@@ -219,8 +231,11 @@ async function findDuplicate(category: CategoryId, coordinates: Coords | null) {
   if (!coordinates || category === "other") return null;
 
   try {
-    const adminDuplicate = await findDuplicateWithAdmin(category, coordinates);
-    if (adminDuplicate) return adminDuplicate;
+    const { getFirebaseAdminDb } = await import("./admin");
+    if (getFirebaseAdminDb()) {
+      const adminDuplicate = await findDuplicateWithAdmin(category, coordinates);
+      return adminDuplicate;
+    }
   } catch (error) {
     console.warn("Admin duplicate check failed", error);
   }
@@ -244,6 +259,8 @@ function buildComplaintDocument(input: SubmitComplaintInput, token: string, phot
     token,
     isAnonymous: input.isAnonymous,
     upvotes: 0,
+    reporterEmail: input.email || null,
+    subscriberEmails: [],
   };
 }
 
@@ -283,6 +300,8 @@ function toRestFields(input: SubmitComplaintInput, token: string, photoURL: stri
     token: { stringValue: token },
     isAnonymous: { booleanValue: input.isAnonymous },
     upvotes: { integerValue: "0" },
+    reporterEmail: input.email ? { stringValue: input.email } : { nullValue: null },
+    subscriberEmails: { arrayValue: { values: [] } },
   };
 }
 
@@ -310,8 +329,11 @@ async function createComplaintWithRest(input: SubmitComplaintInput, token: strin
 
 async function createComplaint(input: SubmitComplaintInput, token: string, photoURL: string | null) {
   try {
-    const adminId = await createComplaintWithAdmin(input, token, photoURL);
-    if (adminId) return adminId;
+    const { getFirebaseAdminDb } = await import("./admin");
+    if (getFirebaseAdminDb()) {
+      const adminId = await createComplaintWithAdmin(input, token, photoURL);
+      if (adminId) return adminId;
+    }
   } catch (error) {
     console.warn("Admin complaint create failed; trying compatibility fallback.", error);
   }
@@ -351,6 +373,13 @@ export async function handleSubmitComplaint(data: SubmitComplaintInput) {
   const id = await createComplaint(data, token, photoURL);
   recordServerReportSubmission(rateLimitKey);
 
+  // Email sending is now deferred to handleSendReceiptEmail which attaches the card image
+  // if (data.email) {
+  //   import("../email.server")
+  //     .then((m) => m.sendSubmissionEmail(data.email!, token, data.location, data.category, photoURL))
+  //     .catch((err) => console.error("Failed to load email service:", err));
+  // }
+
   return {
     ok: true as const,
     id,
@@ -359,10 +388,16 @@ export async function handleSubmitComplaint(data: SubmitComplaintInput) {
   };
 }
 
-export async function handleUpvoteComplaint(id: string) {
+export async function handleUpvoteComplaint(id: string, email?: string) {
   const db = await getFirebaseAdminDb();
   if (!db) throw new Error("Database not initialized");
   const docRef = db.collection("complaints").doc(id);
-  await docRef.update({ upvotes: FieldValue.increment(1) });
+  
+  const updates: any = { upvotes: FieldValue.increment(1) };
+  if (email) {
+    updates.subscriberEmails = FieldValue.arrayUnion(email);
+  }
+  
+  await docRef.update(updates);
   return { ok: true, id };
 }

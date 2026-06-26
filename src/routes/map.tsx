@@ -4,6 +4,7 @@ import { getPublicComplaints } from "@/lib/api/queries.functions";
 import { upvoteComplaint } from "@/lib/api/complaints.functions";
 import { Suspense, lazy } from "react";
 import { ClientOnly } from "@/components/ClientOnly";
+import { CATEGORIES } from "@/lib/civic-logic";
 const PublicMapLeaflet = lazy(() => import("@/components/civic/PublicMapLeaflet"));
 import {
   MapPin,
@@ -56,6 +57,7 @@ function PublicMapRoute() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<"map" | "list">("map");
   const [filter, setFilter] = useState<"all" | "open" | "resolved">("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [focusedLocation, setFocusedLocation] = useState<[number, number] | null>(null);
   const [isLocating, setIsLocating] = useState(false);
@@ -132,6 +134,16 @@ function PublicMapRoute() {
         return;
       }
 
+      // Simple prompt for MVP to collect optional email
+      const email = window.prompt(
+        "Thanks for upvoting! Optional: Enter your email to get notified when this issue is resolved.",
+        ""
+      );
+      if (email !== null && email.trim() !== "" && !email.includes("@")) {
+        toast.error("Please enter a valid email address, or leave it blank.");
+        return;
+      }
+
       // Optimistic UI update
       setComplaints((prev) =>
         prev.map((c) => (c.id === id ? { ...c, upvotes: (c.upvotes || 0) + 1 } : c)),
@@ -141,7 +153,7 @@ function PublicMapRoute() {
       localStorage.setItem(`${appKey}_upvotes`, JSON.stringify([...voted, id]));
 
       // Update via server function
-      const res = await upvoteComplaint({ data: { id } });
+      const res = await upvoteComplaint({ data: { id, email: email || undefined } });
       if (!res.ok) throw new Error((res as any).message || "Failed to upvote");
     } catch (err) {
       console.error("Failed to upvote:", err);
@@ -154,9 +166,14 @@ function PublicMapRoute() {
   };
 
   const filteredComplaints = complaints.filter((c) => {
-    if (filter === "open") return c.status === "open" || c.status === "working";
-    if (filter === "resolved") return c.status === "closed";
-    return true;
+    let statusMatch = true;
+    if (filter === "open") statusMatch = c.status === "open" || c.status === "working";
+    if (filter === "resolved") statusMatch = c.status === "closed";
+    
+    let categoryMatch = true;
+    if (categoryFilter !== "all") categoryMatch = c.category === categoryFilter;
+    
+    return statusMatch && categoryMatch;
   });
 
   const defaultCenter: [number, number] = [20.5937, 78.9629];
@@ -179,46 +196,72 @@ function PublicMapRoute() {
       />
       <div className="pt-24 lg:pt-28 min-h-screen bg-slate-50 flex flex-col">
         <div className="container-x py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 z-10 relative">
-          <div>
-            <Reveal>
+          <div className="w-full sm:w-auto">
+            <Reveal width="100%">
               <span className="eyebrow">Live Pulse</span>
             </Reveal>
-            <Reveal delay={80}>
+            <Reveal delay={80} width="100%">
               <h1 className="mt-2 text-3xl font-extrabold text-[color:var(--text-primary)] tracking-tight">
                 Public Issue Map
               </h1>
             </Reveal>
-            <Reveal delay={160}>
-              <p className="mt-2 text-[color:var(--text-secondary)]">
+            <Reveal delay={160} width="100%">
+              <p className="mt-2 text-[color:var(--text-secondary)] text-sm sm:text-base">
                 Explore recent civic reports from your community.
               </p>
             </Reveal>
           </div>
 
-          <Reveal delay={240}>
-            <div className="flex items-center gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm">
-              <div className="flex bg-slate-100 rounded-lg p-1">
+          <Reveal delay={200} width="100%" className="w-full sm:w-auto mt-2 sm:mt-0">
+            <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto overflow-hidden">
+              <div className="flex flex-col flex-1 sm:flex-none">
+                <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total</span>
+                <span className="text-2xl font-black text-slate-900">{complaints.length}</span>
+              </div>
+              <div className="w-px bg-slate-200"></div>
+              <div className="flex flex-col flex-1 sm:flex-none">
+                <span className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider">Resolved</span>
+                <span className="text-2xl font-black text-emerald-600">
+                  {complaints.filter(c => c.status === "closed").length}
+                </span>
+              </div>
+              <div className="w-px bg-slate-200 hidden sm:block"></div>
+              <div className="flex flex-col hidden sm:flex">
+                <span className="text-xs font-bold text-amber-600 uppercase tracking-wider">In Progress</span>
+                <span className="text-2xl font-black text-amber-600">
+                  {complaints.filter(c => c.status === "working").length}
+                </span>
+              </div>
+            </div>
+          </Reveal>
+
+          <Reveal delay={240} width="100%" className="w-full sm:w-auto mt-2 sm:mt-0">
+            <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
+              <div className="flex bg-slate-100 rounded-lg p-1 flex-1 sm:flex-none">
                 <button
                   onClick={() => setViewMode("map")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "map" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "map" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >
                   <MapIcon size={16} /> Map
                 </button>
                 <button
                   onClick={() => setViewMode("list")}
-                  className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
+                  className={`flex-1 sm:flex-none flex justify-center items-center gap-1.5 px-3 py-1.5 rounded-md text-sm font-medium transition-all ${viewMode === "list" ? "bg-white text-slate-900 shadow-sm" : "text-slate-500 hover:text-slate-700"}`}
                 >
                   <List size={16} /> List
                 </button>
               </div>
-              <div className="h-6 w-px bg-slate-200 mx-1"></div>
-              <div className="relative">
+              <div className="h-6 w-px bg-slate-200 shrink-0"></div>
+              <div className="relative shrink-0">
                 <button
                   onClick={() => setIsFilterOpen(!isFilterOpen)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-white border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
                 >
                   <Filter size={14} className="text-slate-400" />
-                  {filter === "all" ? "All Issues" : filter === "open" ? "Unresolved" : "Resolved"}
+                  <span className="hidden sm:inline">
+                    {filter === "all" ? "All Issues" : filter === "open" ? "Unresolved" : "Resolved"}
+                  </span>
+                  <span className="sm:hidden">Filter</span>
                   <ChevronDown
                     size={14}
                     className={`text-slate-400 transition-transform ${isFilterOpen ? "rotate-180" : ""}`}
@@ -272,6 +315,42 @@ function PublicMapRoute() {
             </div>
           </Reveal>
         </div>
+
+        {/* Category Pills */}
+        <Reveal delay={280} width="100%">
+          <div className="container-x pb-4 pt-2 sm:pt-0">
+            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+              <button
+                onClick={() => setCategoryFilter("all")}
+                className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+                  categoryFilter === "all"
+                    ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                    : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                }`}
+              >
+                All Categories
+              </button>
+              {CATEGORIES.filter(c => c.id !== "other").map((category) => {
+                const Icon = category.icon;
+                const isSelected = categoryFilter === category.id;
+                return (
+                  <button
+                    key={category.id}
+                    onClick={() => setCategoryFilter(category.id)}
+                    className={`flex-shrink-0 flex items-center gap-2 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
+                      isSelected
+                        ? "bg-slate-900 text-white border-slate-900 shadow-sm"
+                        : "bg-white text-slate-600 border-slate-200 hover:bg-slate-50"
+                    }`}
+                  >
+                    <Icon size={14} className={isSelected ? "text-white" : "text-slate-400"} />
+                    {category.label}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+        </Reveal>
 
         <div className="flex-1 relative">
           {loading ? (

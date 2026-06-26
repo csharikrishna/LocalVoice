@@ -25,11 +25,16 @@ export function AdminLogin() {
     const domain = (import.meta.env.VITE_APP_NAME || "LocalVoice")
       .toLowerCase()
       .replace(/\s+/g, "");
+    
+    const cleanUsername = username.trim();
+    const cleanPassword = password.trim();
     // Support both short usernames (e.g. 'electrical') and full emails (e.g. 'electrical@localvoice.admin')
-    const adminEmail = username.includes("@") ? username : `${username}@${domain}.admin`;
+    const adminEmail = cleanUsername.includes("@") ? cleanUsername : `${cleanUsername}@${domain}.admin`;
+    
+    console.log("Attempting login with email:", adminEmail);
 
     try {
-      await signInWithEmailAndPassword(auth, adminEmail, password);
+      await signInWithEmailAndPassword(auth, adminEmail, cleanPassword);
     } catch (err) {
       const authError = getAuthError(err);
       // If the superadmin account was deleted from Firebase Auth, recreate it on the fly

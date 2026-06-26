@@ -3,7 +3,6 @@ import { z } from "zod";
 
 export const createStaffSchema = z.object({
   email: z.string().email(),
-  password: z.string().min(6),
   role: z.enum(["admin", "department_admin", "field_worker"]),
   department: z.string().nullable(),
   adminToken: z.string().min(1),
@@ -30,6 +29,13 @@ export const getStaff = createServerFn({ method: "POST" })
     return handleGetStaff(data.adminToken);
   });
 
+export const getInvites = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string() }))
+  .handler(async ({ data }) => {
+    const { handleGetInvites } = await import("./admin.server");
+    return handleGetInvites(data.adminToken);
+  });
+
 export const updateComplaint = createServerFn({ method: "POST" })
   .validator(z.object({
     adminToken: z.string(),
@@ -52,14 +58,32 @@ export const deleteComplaints = createServerFn({ method: "POST" })
   });
 
 export const toggleStaffStatus = createServerFn({ method: "POST" })
-  .validator(z.object({
-    adminToken: z.string(),
-    staffId: z.string(),
-    status: z.enum(["active", "suspended"]),
+  .validator((d: { adminToken: string; staffId: string; status: "active" | "suspended" }) => ({
+    adminToken: z.string().parse(d.adminToken),
+    staffId: z.string().parse(d.staffId),
+    status: z.enum(["active", "suspended"]).parse(d.status),
   }))
   .handler(async ({ data }) => {
     const { handleToggleStaffStatus } = await import("./admin.server");
     return handleToggleStaffStatus(data);
+  });
+
+export const getInvitation = createServerFn({ method: "GET" })
+  .validator((token: string) => z.string().parse(token))
+  .handler(async ({ data: token }) => {
+    const { handleGetInvitation } = await import("./admin.server");
+    return handleGetInvitation(token);
+  });
+
+export const respondToInvitation = createServerFn({ method: "POST" })
+  .validator((d: { token: string; action: "accept" | "reject"; password?: string }) => ({
+    token: z.string().parse(d.token),
+    action: z.enum(["accept", "reject"]).parse(d.action),
+    password: d.password ? z.string().parse(d.password) : undefined,
+  }))
+  .handler(async ({ data }) => {
+    const { handleRespondToInvitation } = await import("./admin.server");
+    return handleRespondToInvitation(data.token, data.action, data.password);
   });
 
 export const getAdminRole = createServerFn({ method: "POST" })

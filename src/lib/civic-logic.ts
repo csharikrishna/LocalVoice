@@ -1,16 +1,18 @@
 export const DESCRIPTION_MAX = 300;
 
+import { Droplet, Zap, Trash2, Route, Waves, Lightbulb, MapPin, Bath, TreePine, AlertTriangle } from "lucide-react";
+
 export const CATEGORIES = [
-  { id: "streetlight", label: "Streetlight" },
-  { id: "water", label: "Water" },
-  { id: "garbage", label: "Garbage" },
-  { id: "roads", label: "Roads" },
-  { id: "drainage", label: "Drainage" },
-  { id: "electricity", label: "Electricity" },
-  { id: "encroachment", label: "Encroachment" },
-  { id: "publictoilet", label: "Public Toilet" },
-  { id: "park", label: "Park / Garden" },
-  { id: "other", label: "Other" },
+  { id: "streetlight", label: "Streetlight", icon: Lightbulb },
+  { id: "water", label: "Water", icon: Droplet },
+  { id: "garbage", label: "Garbage", icon: Trash2 },
+  { id: "roads", label: "Roads", icon: Route },
+  { id: "drainage", label: "Drainage", icon: Waves },
+  { id: "electricity", label: "Electricity", icon: Zap },
+  { id: "encroachment", label: "Encroachment", icon: MapPin },
+  { id: "publictoilet", label: "Public Toilet", icon: Bath },
+  { id: "park", label: "Park / Garden", icon: TreePine },
+  { id: "other", label: "Other", icon: AlertTriangle },
 ] as const;
 
 export type CategoryId = (typeof CATEGORIES)[number]["id"];

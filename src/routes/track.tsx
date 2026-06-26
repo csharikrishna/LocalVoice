@@ -82,6 +82,18 @@ function TrackPage() {
   const [result, setResult] = useState<ComplaintResult | null>(null);
   const [searched, setSearched] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [recentTokens, setRecentTokens] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const storedTokens = localStorage.getItem("localvoice_recent_tokens");
+      if (storedTokens) {
+        setRecentTokens(JSON.parse(storedTokens));
+      }
+    } catch (e) {
+      console.error("Failed to load recent tokens", e);
+    }
+  }, []);
 
   const handleSearch = async (e?: React.FormEvent, explicitToken?: string) => {
     e?.preventDefault();
@@ -112,6 +124,17 @@ function TrackPage() {
 
   const handleUpvote = async () => {
     if (!result) return;
+    
+    // Simple prompt for MVP to collect optional email
+    const email = window.prompt(
+      "Thanks for upvoting! Optional: Enter your email to get notified when this issue is resolved.",
+      ""
+    );
+    if (email !== null && email.trim() !== "" && !email.includes("@")) {
+      toast.error("Please enter a valid email address, or leave it blank.");
+      return;
+    }
+
     try {
       const appKey = (import.meta.env.VITE_APP_NAME || "LocalVoice")
         .toLowerCase()
@@ -122,7 +145,7 @@ function TrackPage() {
         return;
       }
 
-      const res = await upvoteComplaint({ data: { id: result.id } });
+      const res = await upvoteComplaint({ data: { id: result.id, email: email || undefined } });
       if (!(res as any).ok) throw new Error((res as any).message || "Failed to upvote");
       localStorage.setItem(`${appKey}_upvotes`, JSON.stringify([...voted, result.id]));
 
@@ -200,6 +223,30 @@ function TrackPage() {
             </button>
           </form>
         </Reveal>
+
+        {/* Recent Tokens */}
+        {recentTokens.length > 0 && !searched && (
+          <Reveal delay={300}>
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Your Recent Reports</h3>
+              <div className="flex flex-wrap gap-2">
+                {recentTokens.map((token) => (
+                  <button
+                    key={token}
+                    onClick={() => {
+                      setInputToken(token);
+                      handleSearch(undefined, token);
+                    }}
+                    className="flex items-center gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 transition-colors"
+                  >
+                    <MapIcon size={14} className="text-slate-400" />
+                    {token}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </Reveal>
+        )}
 
         {/* Error */}
         {error && (

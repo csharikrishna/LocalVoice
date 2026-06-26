@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../../lib/firebase";
-import { createStaff, getStaff, toggleStaffStatus } from "../../lib/api/admin.functions";
+import { createStaff, getStaff, toggleStaffStatus, getInvites } from "../../lib/api/admin.functions";
 import {
   Loader2,
   UserPlus,
@@ -15,11 +15,13 @@ import {
 } from "lucide-react";
 import { StaffMember } from "../../types";
 import { toast } from "sonner";
+import { StaffHierarchyView } from "./StaffHierarchyView";
 
 export function StaffManagementTab() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<"list" | "tree">("list");
 
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -35,8 +37,20 @@ export function StaffManagementTab() {
       setRefreshing(true);
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("Not authenticated");
-      const data = await getStaff({ data: { adminToken: token } });
-      setStaff(data as StaffMember[]);
+      const [staffData, invitesData] = await Promise.all([
+        getStaff({ data: { adminToken: token } }),
+        getInvites({ data: { adminToken: token } })
+      ]);
+      const activeStaff = staffData as StaffMember[];
+      const pendingInvites = (invitesData as any[]).filter(i => i.status !== "accepted").map(i => ({
+        id: i.id,
+        email: i.email,
+        role: i.role,
+        department: i.department,
+        status: i.status,
+        isInvite: true
+      }));
+      setStaff([...activeStaff, ...pendingInvites]);
     } catch (err) {
       console.error("Failed to fetch staff:", err);
       toast.error("Failed to load staff list");
@@ -74,14 +88,6 @@ export function StaffManagementTab() {
       return;
     }
 
-    let passwordToUse = newPassword;
-    if (inviteMode === "email") {
-      passwordToUse = Math.random().toString(36).slice(-8); // Generate 8 char random password
-    } else if (passwordToUse.length < 6) {
-      toast.error("Password must be at least 6 characters");
-      return;
-    }
-
     try {
       setIsInviting(true);
       const token = await auth.currentUser?.getIdToken();
@@ -90,7 +96,6 @@ export function StaffManagementTab() {
       const result = await createStaff({
         data: {
           email: newEmail,
-          password: passwordToUse,
           role: newRole as "admin" | "department_admin" | "field_worker",
           department: newRole === "department_admin" || newRole === "field_worker" ? newDepartment : null,
           adminToken: token,
@@ -101,16 +106,7 @@ export function StaffManagementTab() {
         throw new Error(result.message);
       }
 
-      if (inviteMode === "email") {
-        const subject = encodeURIComponent("Welcome to LocalVoice Staff Portal");
-        const body = encodeURIComponent(
-          `Hello,\n\nYou have been invited to join the LocalVoice Staff Portal.\n\nYour Login Email: ${newEmail}\nYour Temporary Password: ${passwordToUse}\n\nPlease log in and change your password as soon as possible.\n\nBest,\nAdmin Team`,
-        );
-        window.location.href = `mailto:${newEmail}?subject=${subject}&body=${body}`;
-        toast.success("Staff member created! Opening email client to send credentials...");
-      } else {
-        toast.success("Staff member created successfully! They can log in now.");
-      }
+      toast.success("Invitation sent successfully! They will receive an email to join.");
 
       setIsModalOpen(false);
       setNewEmail("");
@@ -149,7 +145,23 @@ export function StaffManagementTab() {
             Manage platform access, roles, and department assignments.
           </p>
         </div>
+        
         <div className="flex items-center gap-3">
+          <div className="flex bg-gray-100 p-1 rounded-lg mr-2">
+            <button
+              onClick={() => setViewMode("list")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === "list" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              List View
+            </button>
+            <button
+              onClick={() => setViewMode("tree")}
+              className={`px-3 py-1.5 text-sm font-medium rounded-md transition-colors ${viewMode === "tree" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
+            >
+              Org Chart
+            </button>
+          </div>
+
           <button
             onClick={fetchStaff}
             className="p-2.5 text-gray-500 hover:text-gray-900 bg-white border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors"
@@ -166,7 +178,10 @@ export function StaffManagementTab() {
         </div>
       </div>
 
-      <div className="overflow-x-auto">
+      {viewMode === "tree" ? (
+        <StaffHierarchyView staff={staff} onToggleStatus={handleToggleStatus} />
+      ) : (
+        <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-600">
           <thead className="bg-gray-50 text-xs uppercase text-gray-500 border-b border-gray-100">
             <tr>
@@ -205,31 +220,41 @@ export function StaffManagementTab() {
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-green-50 text-green-700 border border-green-200">
                       <div className="w-1.5 h-1.5 rounded-full bg-green-500" /> Active
                     </span>
-                  ) : (
+                  ) : s.status === "suspended" ? (
                     <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-red-50 text-red-700 border border-red-200">
                       <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> Suspended
+                    </span>
+                  ) : s.status === "pending" ? (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-blue-50 text-blue-700 border border-blue-200">
+                      <div className="w-1.5 h-1.5 rounded-full bg-blue-500" /> Invite Pending
+                    </span>
+                  ) : (
+                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                      <div className="w-1.5 h-1.5 rounded-full bg-slate-500" /> Invite Rejected
                     </span>
                   )}
                 </td>
                 <td className="px-6 py-4 text-right">
-                  <button
-                    onClick={() => handleToggleStatus(s.email, s.status)}
-                    className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
-                      s.status === "active"
-                        ? "text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200"
-                        : "text-green-600 hover:bg-green-50 border border-transparent hover:border-green-200"
-                    }`}
-                  >
-                    {s.status === "active" ? (
-                      <>
-                        <UserX size={14} /> Suspend
-                      </>
-                    ) : (
-                      <>
-                        <UserCheck size={14} /> Restore
-                      </>
-                    )}
-                  </button>
+                  {!(s as any).isInvite && (
+                    <button
+                      onClick={() => handleToggleStatus(s.email, s.status)}
+                      className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors ${
+                        s.status === "active"
+                          ? "text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200"
+                          : "text-green-600 hover:bg-green-50 border border-transparent hover:border-green-200"
+                      }`}
+                    >
+                      {s.status === "active" ? (
+                        <>
+                          <UserX size={14} /> Suspend
+                        </>
+                      ) : (
+                        <>
+                          <UserCheck size={14} /> Restore
+                        </>
+                      )}
+                    </button>
+                  )}
                 </td>
               </tr>
             ))}
@@ -243,6 +268,7 @@ export function StaffManagementTab() {
           </tbody>
         </table>
       </div>
+      )}
 
       {/* Invite Modal */}
       {isModalOpen && (
@@ -258,22 +284,13 @@ export function StaffManagementTab() {
               </button>
             </div>
             <form onSubmit={handleInvite} className="p-6 space-y-4">
-              {/* Mode Toggle */}
-              <div className="flex bg-gray-100 p-1 rounded-lg">
-                <button
-                  type="button"
-                  onClick={() => setInviteMode("manual")}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${inviteMode === "manual" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  Create Manually
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setInviteMode("email")}
-                  className={`flex-1 py-1.5 text-sm font-medium rounded-md transition-colors ${inviteMode === "email" ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}
-                >
-                  Email Invite
-                </button>
+              <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800 mb-4">
+                <p className="font-medium flex items-center gap-1.5 mb-1">
+                  <Mail size={16} /> Automated Email Invitation
+                </p>
+                <p className="text-blue-600">
+                  We will automatically send a secure invitation link to this email address. The user will be able to review the role and set their own password upon accepting.
+                </p>
               </div>
 
               <div>
@@ -295,36 +312,6 @@ export function StaffManagementTab() {
                   />
                 </div>
               </div>
-
-              {inviteMode === "manual" ? (
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Password</label>
-                  <div className="relative">
-                    <Lock
-                      size={16}
-                      className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400"
-                    />
-                    <input
-                      type="text"
-                      required
-                      value={newPassword}
-                      onChange={(e) => setNewPassword(e.target.value)}
-                      className="w-full pl-9 pr-4 py-2 text-sm border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                      placeholder="Set an initial password"
-                    />
-                  </div>
-                </div>
-              ) : (
-                <div className="bg-blue-50 p-3 rounded-lg border border-blue-100 text-sm text-blue-800">
-                  <p className="font-medium flex items-center gap-1.5 mb-1">
-                    <Mail size={16} /> Auto-generate & Email
-                  </p>
-                  <p className="text-blue-600">
-                    An 8-character password will be securely generated. We will open your email
-                    client pre-filled with their login credentials to send.
-                  </p>
-                </div>
-              )}
 
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>

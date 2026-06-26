@@ -52,34 +52,123 @@ export async function handleCreateStaff(data: CreateStaffInput) {
   }
 
   try {
-    const userRecord = await auth.createUser({
-      email: data.email,
-      password: data.password,
-    });
-
-    // Save to admins collection by UID
-    await db.collection("admins").doc(userRecord.uid).set({
-      role: data.role,
-      department: data.department,
-      status: "active",
-      email: data.email, // for UI display
-    });
-    
-    // Also save by email for backward compatibility with existing queries
-    await db.collection("admins").doc(data.email).set({
-      role: data.role,
-      department: data.department,
-      status: "active",
-      uid: userRecord.uid,
-    });
-
-    return { ok: true, uid: userRecord.uid } as const;
-  } catch (error: any) {
-    console.error("Error creating staff", error);
-    if (error.code === "auth/email-already-exists") {
+    // Check if email already exists in auth
+    try {
+      await auth.getUserByEmail(data.email);
       return { ok: false, message: "That email is already registered." } as const;
+    } catch (e: any) {
+      if (e.code !== "auth/user-not-found") throw e;
     }
-    return { ok: false, message: error.message || "Failed to create staff account" } as const;
+
+    // Check if an active invitation already exists
+    const existingInvite = await db.collection("invitations").where("email", "==", data.email).where("status", "==", "pending").get();
+    if (!existingInvite.empty) {
+      return { ok: false, message: "A pending invitation already exists for this email." } as const;
+    }
+
+    const { FieldValue } = await import("firebase-admin/firestore");
+    const crypto = await import("crypto");
+    const token = crypto.randomBytes(32).toString("hex");
+
+    await db.collection("invitations").doc(token).set({
+      email: data.email,
+      role: data.role,
+      department: data.department,
+      token,
+      status: "pending",
+      createdAt: FieldValue.serverTimestamp(),
+    });
+
+    try {
+      const appUrl = process.env.VITE_APP_URL || "https://localvoicee.vercel.app";
+      const inviteLink = `${appUrl}/invite/${token}`;
+      const { sendStaffInvitationEmail } = await import("../email.server");
+      await sendStaffInvitationEmail(data.email, data.role, data.department, inviteLink);
+    } catch (emailError) {
+      console.error("Invitation created, but failed to send email", emailError);
+    }
+
+    return { ok: true, uid: "invited" } as const;
+  } catch (error: any) {
+    console.error("Error creating staff invitation", error);
+    return { ok: false, message: error.message || "Failed to send staff invitation" } as const;
+  }
+}
+
+export async function handleGetInvitation(token: string) {
+  const db = getFirebaseAdminDb();
+  if (!db) return null;
+
+  try {
+    const doc = await db.collection("invitations").doc(token).get();
+    if (!doc.exists) return null;
+    const data = doc.data()!;
+    return {
+      ...data,
+      createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
+    };
+  } catch (err) {
+    console.error("Error fetching invitation", err);
+    return null;
+  }
+}
+
+export async function handleRespondToInvitation(token: string, action: "accept" | "reject", password?: string) {
+  const auth = getFirebaseAdminAuth();
+  const db = getFirebaseAdminDb();
+  if (!auth || !db) return { ok: false, message: "Server configuration missing" };
+
+  try {
+    const docRef = db.collection("invitations").doc(token);
+    const doc = await docRef.get();
+    if (!doc.exists) return { ok: false, message: "Invalid or expired invitation." };
+
+    const invite = doc.data()!;
+    if (invite.status !== "pending") {
+      return { ok: false, message: `This invitation has already been ${invite.status}.` };
+    }
+
+    if (action === "reject") {
+      await docRef.update({ status: "rejected" });
+      return { ok: true };
+    }
+
+    if (action === "accept") {
+      if (!password || password.length < 6) {
+        return { ok: false, message: "A valid password is required to accept the invitation." };
+      }
+
+      // Create the user
+      const userRecord = await auth.createUser({
+        email: invite.email,
+        password: password,
+      });
+
+      // Save to admins collection
+      await db.collection("admins").doc(userRecord.uid).set({
+        role: invite.role,
+        department: invite.department,
+        status: "active",
+        email: invite.email,
+      });
+
+      await db.collection("admins").doc(invite.email).set({
+        role: invite.role,
+        department: invite.department,
+        status: "active",
+        uid: userRecord.uid,
+      });
+
+      // Mark invite as accepted
+      await docRef.update({ status: "accepted" });
+
+      return { ok: true };
+    }
+
+    return { ok: false, message: "Invalid action." };
+  } catch (err: any) {
+    console.error("Error responding to invitation", err);
+    return { ok: false, message: err.message || "Failed to process invitation." };
   }
 }
 
@@ -99,10 +188,20 @@ export async function handleUpdateComplaint(data: { adminToken: string; complain
       data.updates.resolvedAt = FieldValue.serverTimestamp();
     }
 
+    const complaintRef = db.collection("complaints").doc(data.complaintId);
+    
+    // Fetch current state to check if we need to send emails
+    let previousState = null;
+    if (data.updates.status === "closed") {
+      const snap = await complaintRef.get();
+      if (snap.exists) {
+        previousState = snap.data();
+      }
+    }
+
     const batch = db.batch();
     
     // 1. Update Complaint
-    const complaintRef = db.collection("complaints").doc(data.complaintId);
     batch.update(complaintRef, data.updates);
 
     // 2. Audit Log
@@ -116,6 +215,22 @@ export async function handleUpdateComplaint(data: { adminToken: string; complain
     });
 
     await batch.commit();
+
+    // 3. Trigger Emails in background
+    if (data.updates.status === "closed" && previousState && previousState.status !== "closed") {
+      const emailsToSend = new Set<string>();
+      if (previousState.reporterEmail) emailsToSend.add(previousState.reporterEmail);
+      if (Array.isArray(previousState.subscriberEmails)) {
+        previousState.subscriberEmails.forEach((email: string) => emailsToSend.add(email));
+      }
+      
+      if (emailsToSend.size > 0) {
+        import("../email.server")
+          .then((m) => m.sendResolutionEmail(Array.from(emailsToSend), previousState?.token || data.complaintId, previousState.location, previousState.category))
+          .catch((err) => console.error("Failed to load email service:", err));
+      }
+    }
+
     return { ok: true };
   } catch (err: any) {
     return { ok: false, message: err.message || "Failed to update complaint" };
@@ -209,6 +324,26 @@ export async function handleGetStaff(adminToken: string) {
   });
 
   return Array.from(staffMap.values());
+}
+
+export async function handleGetInvites(adminToken: string) {
+  const isSuperAdmin = await verifySuperAdmin(adminToken);
+  if (!isSuperAdmin) {
+    throw new Error("Unauthorized. Only Central Dispatchers can manage staff.");
+  }
+
+  const db = getFirebaseAdminDb();
+  if (!db) return [];
+
+  const snapshot = await db.collection("invitations").orderBy("createdAt", "desc").get();
+  return snapshot.docs.map(doc => {
+    const data = doc.data();
+    return {
+      id: doc.id,
+      ...data,
+      createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
+    };
+  });
 }
 
 export async function handleGetAdminRole(adminToken: string) {

@@ -14,6 +14,8 @@ export interface Complaint {
   assigned_squad_id?: string | null;
   assigned_agent_id?: string | null;
   resolvedAt?: any;
+  reporterEmail?: string;
+  subscriberEmails?: string[];
 }
 
 export type AdminRole = "superadmin" | "admin" | "department_admin" | "field_worker";

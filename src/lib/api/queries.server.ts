@@ -9,6 +9,25 @@ function serializeTimestamp(ts: any) {
   return ts;
 }
 
+// Recursively sanitize to catch any nested Timestamps or Geopoints
+function sanitize(obj: any): any {
+  if (obj === null || obj === undefined) return obj;
+  if (obj.toDate && typeof obj.toDate === "function") return obj.toDate().toISOString();
+  // If it's a Firestore GeoPoint (has latitude/longitude properties and is not a plain object)
+  if (typeof obj === "object" && 'latitude' in obj && 'longitude' in obj && typeof obj.isEqual === 'function') {
+    return { lat: obj.latitude, lng: obj.longitude };
+  }
+  if (Array.isArray(obj)) return obj.map(sanitize);
+  if (typeof obj === "object") {
+    const res: any = {};
+    for (const key in obj) {
+      res[key] = sanitize(obj[key]);
+    }
+    return res;
+  }
+  return obj;
+}
+
 // Public complaint strips internal fields
 function toPublicComplaint(doc: any) {
   const data = doc.data();
@@ -17,7 +36,7 @@ function toPublicComplaint(doc: any) {
     category: data.category || "other",
     location: data.location || "",
     description: data.description || "",
-    coordinates: data.coordinates || null,
+    coordinates: sanitize(data.coordinates) || null,
     photoURL: data.photoURL || null,
     status: data.status || "open",
     timestamp: serializeTimestamp(data.timestamp),
@@ -125,12 +144,14 @@ export async function handleGetAdminComplaints(adminToken: string) {
   const snapshot = await complaintsQuery.orderBy("timestamp", "desc").get();
   
   // Return FULL complaint data to admins, including internal fields if any
+  // We use a deep clone to strip Firestore prototypes that break superjson serialization
   return snapshot.docs.map(doc => {
     const data = doc.data();
+
     return {
       id: doc.id,
-      ...data,
-      timestamp: serializeTimestamp(data.timestamp),
+      ...sanitize(data),
+      timestamp: serializeTimestamp(data.timestamp), // ensure main timestamp is ISO
     };
   });
 }

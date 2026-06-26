@@ -162,12 +162,13 @@ interface FormState {
   errorMessage: string | null;
   trackingToken: string | null;
   duplicateIssueId: string | null;
+  emailSent: boolean;
 }
 
 type FormAction =
   | { type: "UPLOAD_PROGRESS"; payload: number }
   | { type: "SAVING" }
-  | { type: "SUCCESS"; token: string }
+  | { type: "SUCCESS"; token: string; emailSent: boolean }
   | { type: "ERROR"; message: string; duplicateIssueId?: string }
   | { type: "RESET" };
 
@@ -184,6 +185,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         errorMessage: null,
         trackingToken: action.token,
         duplicateIssueId: null,
+        emailSent: action.emailSent,
       };
     case "ERROR":
       return {
@@ -192,6 +194,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         errorMessage: action.message,
         trackingToken: null,
         duplicateIssueId: action.duplicateIssueId || null,
+        emailSent: false,
       };
     case "RESET":
       return {
@@ -200,6 +203,7 @@ function formReducer(state: FormState, action: FormAction): FormState {
         errorMessage: null,
         trackingToken: null,
         duplicateIssueId: null,
+        emailSent: false,
       };
     default:
       return state;
@@ -212,6 +216,7 @@ const INITIAL_STATE: FormState = {
   errorMessage: null,
   trackingToken: null,
   duplicateIssueId: null,
+  emailSent: false,
 };
 
 // ─── Utilities ────────────────────────────────────────────────────────────────
@@ -403,6 +408,7 @@ export function ComplaintForm() {
   const [locationEditable, setLocationEditable] = useState(true);
   const [locationDetected, setLocationDetected] = useState(false);
   const [description, setDescription] = useState("");
+  const [email, setEmail] = useState("");
   const [isAnonymous, setIsAnonymous] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -719,6 +725,7 @@ export function ComplaintForm() {
             description,
             photoBase64,
             isAnonymous,
+            email,
             captchaToken: captchaValue,
             clientId: getRateLimitClientId(),
           },
@@ -735,19 +742,33 @@ export function ComplaintForm() {
         }
 
         try {
-          const stored = localStorage.getItem("localVoice_my_reports");
-          const myReports = stored ? JSON.parse(stored) : [];
+          const storedIds = localStorage.getItem("localVoice_my_reports");
+          const myReports = storedIds ? JSON.parse(storedIds) : [];
           if (!myReports.includes(result.id)) {
             myReports.push(result.id);
           }
           localStorage.setItem("localVoice_my_reports", JSON.stringify(myReports));
+
+          // Also save the tracking token for easy access on the track page
+          const storedTokens = localStorage.getItem("localvoice_recent_tokens");
+          const myTokens = storedTokens ? JSON.parse(storedTokens) : [];
+          if (!myTokens.includes(result.token)) {
+            // Add to beginning, keep max 10
+            myTokens.unshift(result.token);
+            if (myTokens.length > 10) myTokens.length = 10;
+          }
+          localStorage.setItem("localvoice_recent_tokens", JSON.stringify(myTokens));
         } catch (e) {
           console.error("Failed to save to local storage", e);
         }
 
         recordReportSubmission();
         setRateLimitState(checkRateLimit());
-        dispatch({ type: "SUCCESS", token: result.token });
+        // Save email so CivicHeroCard can grab it for the receipt attachment
+        if (email) {
+          localStorage.setItem("localvoice_last_email", email);
+        }
+        dispatch({ type: "SUCCESS", token: result.token, emailSent: !!email });
         haptics.success();
       } catch (err) {
         console.error("[ComplaintForm] Submit error:", err);
@@ -1153,6 +1174,31 @@ export function ComplaintForm() {
           />
         </div>
 
+        {/* ── Email Notification ──────────────────────────────────────────────── */}
+        <div className="mb-6 border-0 p-0 m-0">
+          <label htmlFor="email" className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
+            Get Notified <span className="font-normal text-[color:var(--text-muted)]">(optional)</span>
+          </label>
+          <input
+            id="email"
+            type="email"
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            disabled={isSubmitting}
+            placeholder="Enter your email to receive an update when fixed"
+            className="w-full px-4 py-3 rounded-[10px] text-sm bg-white outline-none transition-all placeholder:text-[color:var(--text-muted)] disabled:opacity-50 disabled:cursor-not-allowed"
+            style={{ border: "1px solid var(--border)" }}
+            onFocus={(e) => {
+              e.currentTarget.style.borderColor = "var(--primary)";
+              e.currentTarget.style.boxShadow = "0 0 0 3px rgba(27,79,216,0.12)";
+            }}
+            onBlur={(e) => {
+              e.currentTarget.style.borderColor = "var(--border)";
+              e.currentTarget.style.boxShadow = "none";
+            }}
+          />
+        </div>
+
         {/* ── Anonymous Reporting Toggle ─────────────────────────────────────── */}
         <div className="mb-6 flex items-center justify-between p-4 rounded-[12px] bg-slate-50 border border-slate-200">
           <div>
@@ -1214,6 +1260,7 @@ export function ComplaintForm() {
             category={category}
             location={locationText}
             onReset={handleReset}
+            emailSent={formState.emailSent}
           />
         ) : (
           <div className="flex flex-col gap-4">

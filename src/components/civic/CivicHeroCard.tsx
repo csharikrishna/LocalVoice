@@ -2,9 +2,10 @@ import { motion } from "framer-motion";
 import { Download, Share2, ScanLine } from "lucide-react";
 import { toPng } from "html-to-image";
 import { QRCodeSVG } from "qrcode.react";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { ShareRecordDialog } from "./ShareRecordDialog";
 import { toast } from "sonner";
+import { sendReceiptEmail } from "@/lib/api/complaints.functions";
 
 function getErrorDetails(error: unknown) {
   if (error && typeof error === "object") {
@@ -18,12 +19,51 @@ interface CivicHeroCardProps {
   category: string;
   location: string;
   onReset: () => void;
+  emailSent?: boolean;
 }
 
-export function CivicHeroCard({ token, category, location, onReset }: CivicHeroCardProps) {
+export function CivicHeroCard({ token, category, location, onReset, emailSent }: CivicHeroCardProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const APP_URL = import.meta.env.VITE_APP_URL || "https://localvoice.web.app";
+  const [sendingReceipt, setSendingReceipt] = useState(emailSent === true);
+  const receiptSentRef = useRef(false);
+  const APP_URL = import.meta.env.VITE_APP_URL || "https://localvoicee.vercel.app";
   const trackingUrl = `${APP_URL}/track?token=${token}`;
+
+  useEffect(() => {
+    if (emailSent && !receiptSentRef.current) {
+      receiptSentRef.current = true;
+      const sendEmail = async () => {
+        // Small delay to ensure the card is fully rendered in the DOM
+        await new Promise(r => setTimeout(r, 500));
+        const cardElement = document.getElementById("official-report-dossier");
+        if (!cardElement) {
+          setSendingReceipt(false);
+          return;
+        }
+        
+        try {
+          const dataUrl = await toPng(cardElement, {
+            cacheBust: true,
+            backgroundColor: "#ffffff",
+            pixelRatio: 2, // slightly lower for email attachment size
+            skipFonts: true,
+            filter: (node) => (node as HTMLElement).id !== "scanner-line",
+          });
+          
+          const email = localStorage.getItem("localvoice_last_email");
+          if (email) {
+            await sendReceiptEmail({ data: { token, email, base64Image: dataUrl } });
+          }
+        } catch (err) {
+          console.error("Failed to generate and send receipt:", err);
+        } finally {
+          setSendingReceipt(false);
+        }
+      };
+      
+      sendEmail();
+    }
+  }, [emailSent, token]);
 
   const handleDownload = async () => {
     const cardElement = document.getElementById("official-report-dossier");
@@ -48,7 +88,9 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
       // On mobile (especially iOS Safari), programmatic downloads of Data URLs often silently fail.
       // The most reliable way to "Save" an image on mobile is using the native Share sheet.
       let sharedNatively = false;
-      if (typeof navigator !== "undefined" && navigator.share) {
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+      
+      if (isMobile && typeof navigator !== "undefined" && navigator.share) {
         try {
           const blob = await (await fetch(dataUrl)).blob();
           const file = new File([blob], filename, { type: "image/png" });
@@ -96,6 +138,12 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
       transition={{ type: "spring", stiffness: 100, delay: 0.2 }}
       className="mt-6 flex flex-col items-center gap-4"
     >
+      {(emailSent || sendingReceipt) && (
+        <div className={`w-full px-4 py-3 rounded-lg border text-sm font-medium text-center shadow-sm transition-colors ${sendingReceipt ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>
+          {sendingReceipt ? '⏳ Generating and sending your receipt...' : '✅ A copy of this receipt and tracking link has been sent to your email!'}
+        </div>
+      )}
+
       <div
         id="official-report-dossier"
         className="w-full relative overflow-hidden rounded-lg border border-slate-300 bg-[#f8fafc] shadow-lg"
@@ -173,7 +221,7 @@ export function CivicHeroCard({ token, category, location, onReset }: CivicHeroC
           </div>
         </div>
         <div className="bg-slate-200 border-t border-slate-300 text-slate-600 text-center py-2 text-[10px] font-mono tracking-widest uppercase">
-          {(import.meta.env.VITE_APP_URL || "localvoice.web.app").replace(/^https?:\/\//, "")}
+          {(import.meta.env.VITE_APP_URL || "localvoicee.vercel.app").replace(/^https?:\/\//, "")}
         </div>
       </div>
 
