@@ -315,6 +315,7 @@ function PublicMapRoute() {
               </div>
             </div>
           </Reveal>
+          </div>
         </div>
 
         {/* Category Pills */}
