@@ -121,9 +121,12 @@ export async function handleGetAdminComplaints(adminToken: string) {
     }
   }
 
+  const domain = (import.meta.env.VITE_APP_NAME || process.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "");
   const isMasterAdmin = 
+    decodedToken.email === import.meta.env.VITE_ADMIN_EMAIL ||
     decodedToken.email === process.env.VITE_ADMIN_EMAIL ||
-    decodedToken.email === process.env.ADMIN_EMAIL;
+    decodedToken.email === process.env.ADMIN_EMAIL ||
+    ((import.meta.env.VITE_ADMIN_USERNAME || process.env.VITE_ADMIN_USERNAME) && decodedToken.email === `${import.meta.env.VITE_ADMIN_USERNAME || process.env.VITE_ADMIN_USERNAME}@${domain}.admin`);
 
   if (!role && isMasterAdmin) {
     role = "superadmin";
