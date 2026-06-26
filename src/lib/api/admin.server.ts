@@ -72,6 +72,7 @@ export async function handleCreateStaff(data: CreateStaffInput) {
     const { FieldValue } = await import("firebase-admin/firestore");
     const crypto = await import("crypto");
     const token = crypto.randomBytes(32).toString("hex");
+    const decodedToken = await auth.verifyIdToken(data.adminToken);
 
     await db.collection("invitations").doc(token).set({
       email: data.email,
@@ -82,8 +83,16 @@ export async function handleCreateStaff(data: CreateStaffInput) {
       createdAt: FieldValue.serverTimestamp(),
     });
 
+    // Audit log
+    await db.collection("audit_logs").add({
+      action: "INVITE_STAFF",
+      actorEmail: decodedToken.email || "unknown",
+      details: { email: data.email, role: data.role, department: data.department },
+      timestamp: FieldValue.serverTimestamp(),
+    });
+
     try {
-      const appUrl = process.env.VITE_APP_URL || "https://localvoicee.vercel.app";
+      const appUrl = import.meta.env.VITE_APP_URL || process.env.VITE_APP_URL || "https://localvoicee.vercel.app";
       const inviteLink = `${appUrl}/invite/${token}`;
       const { sendStaffInvitationEmail } = await import("../email.server");
       await sendStaffInvitationEmail(data.email, data.role, data.department, inviteLink);
@@ -131,8 +140,16 @@ export async function handleRespondToInvitation(token: string, action: "accept" 
       return { ok: false, message: `This invitation has already been ${invite.status}.` };
     }
 
+    const { FieldValue } = await import("firebase-admin/firestore");
+
     if (action === "reject") {
       await docRef.update({ status: "rejected" });
+      await db.collection("audit_logs").add({
+        action: "REJECT_INVITE",
+        actorEmail: invite.email,
+        details: { role: invite.role, department: invite.department },
+        timestamp: FieldValue.serverTimestamp(),
+      });
       return { ok: true };
     }
 
@@ -164,6 +181,14 @@ export async function handleRespondToInvitation(token: string, action: "accept" 
 
       // Mark invite as accepted
       await docRef.update({ status: "accepted" });
+
+      // Audit log
+      await db.collection("audit_logs").add({
+        action: "ACCEPT_INVITE",
+        actorEmail: invite.email,
+        details: { role: invite.role, department: invite.department },
+        timestamp: FieldValue.serverTimestamp(),
+      });
 
       return { ok: true };
     }
@@ -283,11 +308,24 @@ export async function handleToggleStaffStatus(data: { adminToken: string; staffI
     return { ok: false, message: "Unauthorized. Only Central Dispatchers can manage staff." };
   }
 
+  const auth = getFirebaseAdminAuth();
   const db = getFirebaseAdminDb();
-  if (!db) return { ok: false, message: "Server configuration missing" };
+  if (!auth || !db) return { ok: false, message: "Server configuration missing" };
 
   try {
+    const decodedToken = await auth.verifyIdToken(data.adminToken);
+    const { FieldValue } = await import("firebase-admin/firestore");
+
     await db.collection("admins").doc(data.staffId).update({ status: data.status });
+
+    // Audit log
+    await db.collection("audit_logs").add({
+      action: "TOGGLE_STAFF_STATUS",
+      actorEmail: decodedToken.email || "unknown",
+      details: { staffId: data.staffId, newStatus: data.status },
+      timestamp: FieldValue.serverTimestamp(),
+    });
+
     return { ok: true };
   } catch (err: any) {
     return { ok: false, message: err.message || "Failed to update staff status" };
@@ -400,4 +438,200 @@ export async function handleGetAdminRole(adminToken: string) {
     console.error("Failed to fetch admin role", error);
     throw error;
   }
+}
+
+// ============================================================
+// Revoke Invite
+// ============================================================
+export async function handleRevokeInvite(adminToken: string, inviteId: string) {
+  const isSuperAdmin = await verifySuperAdmin(adminToken);
+  if (!isSuperAdmin) {
+    throw new Error("Unauthorized. Only Central Dispatchers can revoke invites.");
+  }
+
+  const auth = getFirebaseAdminAuth();
+  const db = getFirebaseAdminDb();
+  if (!auth || !db) throw new Error("Server not configured");
+
+  const inviteRef = db.collection("invitations").doc(inviteId);
+  const inviteDoc = await inviteRef.get();
+
+  if (!inviteDoc.exists) throw new Error("Invitation not found.");
+  const data = inviteDoc.data()!;
+
+  const decodedToken = await auth.verifyIdToken(adminToken);
+  const { FieldValue } = await import("firebase-admin/firestore");
+
+  await inviteRef.delete();
+
+  // Audit log
+  await db.collection("audit_logs").add({
+    action: "REVOKE_INVITE",
+    actorEmail: decodedToken.email || "unknown",
+    details: { email: data.email, role: data.role, department: data.department },
+    timestamp: FieldValue.serverTimestamp(),
+  });
+
+  if (data.status === "pending") {
+    try {
+      const { sendRevokeEmail } = await import("../email.server");
+      await sendRevokeEmail(data.email, data.role, data.department);
+    } catch (e) {
+      console.warn("Could not send revocation email:", e);
+    }
+  }
+
+  return { ok: true };
+}
+
+// ============================================================
+// Resend Invite
+// ============================================================
+export async function handleResendInvite(adminToken: string, inviteId: string) {
+  const isSuperAdmin = await verifySuperAdmin(adminToken);
+  if (!isSuperAdmin) {
+    throw new Error("Unauthorized. Only Central Dispatchers can resend invites.");
+  }
+
+  const auth = getFirebaseAdminAuth();
+  const db = getFirebaseAdminDb();
+  if (!auth || !db) throw new Error("Server not configured");
+
+  const inviteRef = db.collection("invitations").doc(inviteId);
+  const inviteDoc = await inviteRef.get();
+
+  if (!inviteDoc.exists) throw new Error("Invitation not found.");
+  const data = inviteDoc.data()!;
+
+  if (data.status !== "pending") {
+    throw new Error("Can only resend pending invitations.");
+  }
+
+  const decodedToken = await auth.verifyIdToken(adminToken);
+  const { FieldValue } = await import("firebase-admin/firestore");
+
+  const appUrl = import.meta.env.VITE_APP_URL || process.env.VITE_APP_URL || "https://localvoicee.vercel.app";
+  const inviteLink = `${appUrl}/invite/${inviteId}`;
+
+  const { sendStaffInvitationEmail } = await import("../email.server");
+  await sendStaffInvitationEmail(data.email, data.role, data.department, inviteLink);
+
+  // Audit log
+  await db.collection("audit_logs").add({
+    action: "RESEND_INVITE",
+    actorEmail: decodedToken.email || "unknown",
+    details: { email: data.email, role: data.role, department: data.department },
+    timestamp: FieldValue.serverTimestamp(),
+  });
+
+  return { ok: true };
+}
+
+// ============================================================
+// Audit Logs
+// ============================================================
+export async function handleGetAuditLogs(adminToken: string, limit = 50, actionFilter?: string) {
+  const isSuperAdmin = await verifySuperAdmin(adminToken);
+  if (!isSuperAdmin) {
+    throw new Error("Unauthorized.");
+  }
+
+  const db = getFirebaseAdminDb();
+  if (!db) return [];
+
+  let query: FirebaseFirestore.Query = db.collection("audit_logs").orderBy("timestamp", "desc").limit(limit);
+
+  if (actionFilter && actionFilter !== "all") {
+    query = db.collection("audit_logs").where("action", "==", actionFilter).orderBy("timestamp", "desc").limit(limit);
+  }
+
+  const snapshot = await query.get();
+  const rawLogs = snapshot.docs.map((doc) => {
+    const d = doc.data();
+    return {
+      id: doc.id,
+      action: d.action,
+      actorEmail: d.actorEmail,
+      details: d.details || {},
+      complaintId: d.complaintId || null,
+      timestamp: d.timestamp?.toMillis ? d.timestamp.toMillis() : null,
+    };
+  });
+
+  return JSON.parse(JSON.stringify(rawLogs));
+}
+
+// ============================================================
+// Staff Metrics
+// ============================================================
+export async function handleGetStaffMetrics(adminToken: string, staffEmail: string) {
+  const isSuperAdmin = await verifySuperAdmin(adminToken);
+  if (!isSuperAdmin) {
+    throw new Error("Unauthorized.");
+  }
+
+  const db = getFirebaseAdminDb();
+  if (!db) throw new Error("Server not configured");
+
+  // 1. Get all audit logs for this actor
+  const auditSnapshot = await db.collection("audit_logs")
+    .where("actorEmail", "==", staffEmail)
+    .orderBy("timestamp", "desc")
+    .limit(100)
+    .get();
+
+  const allActions = auditSnapshot.docs.map((doc) => {
+    const d = doc.data();
+    return {
+      id: doc.id,
+      action: d.action,
+      details: d.details || {},
+      complaintId: d.complaintId || null,
+      timestamp: d.timestamp?.toMillis ? d.timestamp.toMillis() : null,
+    };
+  });
+
+  const totalActions = allActions.length;
+  const complaintsResolved = allActions.filter(
+    (a) => a.action === "UPDATE_COMPLAINT" && a.details?.status === "closed"
+  ).length;
+  const lastActive = allActions.length > 0 ? allActions[0].timestamp : null;
+  const recentActivity = allActions.slice(0, 10);
+
+  // 2. Compute average resolution time from complaints resolved by this user
+  let avgResolutionMs = 0;
+  const resolvedComplaintIds = allActions
+    .filter((a) => a.action === "UPDATE_COMPLAINT" && a.details?.status === "closed" && a.complaintId)
+    .map((a) => a.complaintId!)
+    .slice(0, 20);
+
+  if (resolvedComplaintIds.length > 0) {
+    let totalMs = 0;
+    let count = 0;
+    for (const cid of resolvedComplaintIds) {
+      try {
+        const cDoc = await db.collection("complaints").doc(cid).get();
+        if (cDoc.exists) {
+          const cData = cDoc.data()!;
+          const created = cData.timestamp?.toMillis ? cData.timestamp.toMillis() : null;
+          const resolved = cData.resolvedAt?.toMillis ? cData.resolvedAt.toMillis() : null;
+          if (created && resolved) {
+            totalMs += resolved - created;
+            count++;
+          }
+        }
+      } catch { /* skip */ }
+    }
+    if (count > 0) avgResolutionMs = Math.round(totalMs / count);
+  }
+
+  const rawResult = {
+    totalActions,
+    complaintsResolved,
+    avgResolutionMs,
+    lastActive,
+    recentActivity,
+  };
+
+  return JSON.parse(JSON.stringify(rawResult));
 }

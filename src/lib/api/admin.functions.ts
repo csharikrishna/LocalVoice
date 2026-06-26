@@ -99,3 +99,24 @@ export const revokeInvite = createServerFn({ method: "POST" })
     const { handleRevokeInvite } = await import("./admin.server");
     return handleRevokeInvite(data.adminToken, data.inviteId);
   });
+
+export const resendInvite = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string(), inviteId: z.string() }))
+  .handler(async ({ data }) => {
+    const { handleResendInvite } = await import("./admin.server");
+    return handleResendInvite(data.adminToken, data.inviteId);
+  });
+
+export const getAuditLogs = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string(), limit: z.number().optional(), actionFilter: z.string().optional() }))
+  .handler(async ({ data }) => {
+    const { handleGetAuditLogs } = await import("./admin.server");
+    return handleGetAuditLogs(data.adminToken, data.limit, data.actionFilter);
+  });
+
+export const getStaffMetrics = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string(), staffEmail: z.string() }))
+  .handler(async ({ data }) => {
+    const { handleGetStaffMetrics } = await import("./admin.server");
+    return handleGetStaffMetrics(data.adminToken, data.staffEmail);
+  });

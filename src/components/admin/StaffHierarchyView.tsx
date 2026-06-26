@@ -1,14 +1,16 @@
 import React, { useState } from "react";
 import { StaffMember } from "../../types";
-import { Shield, ChevronDown, ChevronRight, UserCircle, Building2, UserX, UserCheck, X } from "lucide-react";
+import { Shield, ChevronDown, ChevronRight, UserCircle, Building2, UserX, UserCheck, X, RotateCw } from "lucide-react";
 
 interface Props {
   staff: StaffMember[];
   onToggleStatus?: (email: string, currentStatus: string) => void;
   onRevokeInvite?: (inviteId: string) => void;
+  onResendInvite?: (inviteId: string) => void;
+  onSelectStaff?: (member: StaffMember) => void;
 }
 
-export function StaffHierarchyView({ staff, onToggleStatus, onRevokeInvite }: Props) {
+export function StaffHierarchyView({ staff, onToggleStatus, onRevokeInvite, onResendInvite, onSelectStaff }: Props) {
   const admins = staff.filter((s) => s.role === "admin");
   const departments = Array.from(new Set(staff.map((s) => s.department).filter(Boolean))) as string[];
 
@@ -23,7 +25,7 @@ export function StaffHierarchyView({ staff, onToggleStatus, onRevokeInvite }: Pr
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 pl-8 border-l-2 border-blue-100">
             {admins.map((admin) => (
-              <StaffCard key={admin.id} member={admin} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
+              <StaffCard key={admin.id} member={admin} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} onResendInvite={onResendInvite} onSelectStaff={onSelectStaff} />
             ))}
             {admins.length === 0 && <p className="text-slate-500 italic">No central dispatchers found.</p>}
           </div>
@@ -32,7 +34,7 @@ export function StaffHierarchyView({ staff, onToggleStatus, onRevokeInvite }: Pr
         {/* Departments */}
         <div className="space-y-6">
           {departments.map((dept) => (
-            <DepartmentNode key={dept} department={dept} staff={staff.filter((s) => s.department === dept)} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
+            <DepartmentNode key={dept} department={dept} staff={staff.filter((s) => s.department === dept)} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} onResendInvite={onResendInvite} onSelectStaff={onSelectStaff} />
           ))}
         </div>
       </div>
@@ -40,7 +42,7 @@ export function StaffHierarchyView({ staff, onToggleStatus, onRevokeInvite }: Pr
   );
 }
 
-function DepartmentNode({ department, staff, onToggleStatus, onRevokeInvite }: { department: string; staff: StaffMember[]; onToggleStatus?: (e: string, s: string) => void; onRevokeInvite?: (id: string) => void; }) {
+function DepartmentNode({ department, staff, onToggleStatus, onRevokeInvite, onResendInvite, onSelectStaff }: { department: string; staff: StaffMember[]; onToggleStatus?: (e: string, s: string) => void; onRevokeInvite?: (id: string) => void; onResendInvite?: (id: string) => void; onSelectStaff?: (m: StaffMember) => void; }) {
   const [expanded, setExpanded] = useState(true);
   
   const supervisors = staff.filter((s) => s.role === "department_admin");
@@ -69,7 +71,7 @@ function DepartmentNode({ department, staff, onToggleStatus, onRevokeInvite }: {
               <h5 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Supervisors</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {supervisors.map((s) => (
-                  <StaffCard key={s.id} member={s} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
+                  <StaffCard key={s.id} member={s} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} onResendInvite={onResendInvite} onSelectStaff={onSelectStaff} />
                 ))}
               </div>
             </div>
@@ -83,7 +85,7 @@ function DepartmentNode({ department, staff, onToggleStatus, onRevokeInvite }: {
               <h5 className="text-sm font-bold text-slate-400 uppercase tracking-wider mb-3">Field Team</h5>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {fieldWorkers.map((w) => (
-                  <StaffCard key={w.id} member={w} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} />
+                  <StaffCard key={w.id} member={w} onToggleStatus={onToggleStatus} onRevokeInvite={onRevokeInvite} onResendInvite={onResendInvite} onSelectStaff={onSelectStaff} />
                 ))}
               </div>
             </div>
@@ -96,7 +98,7 @@ function DepartmentNode({ department, staff, onToggleStatus, onRevokeInvite }: {
   );
 }
 
-function StaffCard({ member, onToggleStatus, onRevokeInvite }: { member: StaffMember; onToggleStatus?: (e: string, s: string) => void; onRevokeInvite?: (id: string) => void; }) {
+function StaffCard({ member, onToggleStatus, onRevokeInvite, onResendInvite, onSelectStaff }: { member: StaffMember; onToggleStatus?: (e: string, s: string) => void; onRevokeInvite?: (id: string) => void; onResendInvite?: (id: string) => void; onSelectStaff?: (m: StaffMember) => void; }) {
   const isInvite = (member as any).isInvite;
 
   return (
@@ -114,7 +116,11 @@ function StaffCard({ member, onToggleStatus, onRevokeInvite }: { member: StaffMe
             {member.email.charAt(0).toUpperCase()}
           </div>
           <div className="truncate">
-            <p className="font-medium text-slate-900 truncate" title={member.email}>{member.email}</p>
+            <p
+              className="font-medium text-slate-900 truncate hover:text-blue-600 cursor-pointer transition-colors"
+              title={member.email}
+              onClick={() => onSelectStaff?.(member)}
+            >{member.email}</p>
             <div className="flex items-center gap-2 mt-1">
               <span className={`text-[10px] uppercase tracking-wider font-bold px-1.5 py-0.5 rounded ${
                 member.role === "admin" ? "bg-indigo-50 text-indigo-700" :
@@ -156,6 +162,15 @@ function StaffCard({ member, onToggleStatus, onRevokeInvite }: { member: StaffMe
               title="Revoke Invitation"
             >
               <X size={14} />
+            </button>
+          )}
+          {isInvite && member.status === "pending" && onResendInvite && (
+            <button
+              onClick={() => onResendInvite(member.id)}
+              className="p-1.5 rounded-md transition-colors text-blue-500 hover:bg-blue-50"
+              title="Resend Invitation"
+            >
+              <RotateCw size={14} />
             </button>
           )}
         </div>

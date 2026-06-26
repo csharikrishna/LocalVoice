@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { auth } from "../../lib/firebase";
-import { createStaff, getStaff, toggleStaffStatus, getInvites, revokeInvite } from "../../lib/api/admin.functions";
+import { createStaff, getStaff, toggleStaffStatus, getInvites, revokeInvite, resendInvite } from "../../lib/api/admin.functions";
 import {
   Loader2,
   UserPlus,
@@ -12,10 +12,12 @@ import {
   RefreshCw,
   X,
   Lock,
+  RotateCw,
 } from "lucide-react";
 import { StaffMember } from "../../types";
 import { toast } from "sonner";
 import { StaffHierarchyView } from "./StaffHierarchyView";
+import { StaffDetailPanel } from "./StaffDetailPanel";
 
 export function StaffManagementTab() {
   const [staff, setStaff] = useState<StaffMember[]>([]);
@@ -31,6 +33,7 @@ export function StaffManagementTab() {
   const [newDepartment, setNewDepartment] = useState("Electrical");
   const [isInviting, setIsInviting] = useState(false);
   const [inviteMode, setInviteMode] = useState<"manual" | "email">("manual");
+  const [selectedStaff, setSelectedStaff] = useState<StaffMember | null>(null);
 
   const fetchStaff = async () => {
     try {
@@ -106,6 +109,24 @@ export function StaffManagementTab() {
     } catch (err) {
       console.error("Failed to revoke invite:", err);
       toast.error("Failed to revoke invitation");
+    }
+  };
+
+  const handleResendInvite = async (inviteId: string) => {
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+
+      await resendInvite({
+        data: {
+          adminToken: token,
+          inviteId,
+        },
+      });
+      toast.success("Invitation email resent successfully");
+    } catch (err) {
+      console.error("Failed to resend invite:", err);
+      toast.error("Failed to resend invitation");
     }
   };
 
@@ -207,7 +228,7 @@ export function StaffManagementTab() {
       </div>
 
       {viewMode === "tree" ? (
-        <StaffHierarchyView staff={staff} onToggleStatus={handleToggleStatus} onRevokeInvite={handleRevokeInvite} />
+        <StaffHierarchyView staff={staff} onToggleStatus={handleToggleStatus} onRevokeInvite={handleRevokeInvite} onResendInvite={handleResendInvite} onSelectStaff={setSelectedStaff} />
       ) : (
         <div className="overflow-x-auto">
         <table className="w-full text-left text-sm text-gray-600">
@@ -228,7 +249,7 @@ export function StaffManagementTab() {
                     <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold">
                       {s.email.charAt(0).toUpperCase()}
                     </div>
-                    <span className="font-medium text-gray-900">{s.email}</span>
+                    <span className="font-medium text-gray-900 hover:text-blue-600 cursor-pointer transition-colors" onClick={() => setSelectedStaff(s)}>{s.email}</span>
                   </div>
                 </td>
                 <td className="px-6 py-4">
@@ -289,6 +310,14 @@ export function StaffManagementTab() {
                       className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors text-red-600 hover:bg-red-50 border border-transparent hover:border-red-200"
                     >
                       <X size={14} /> Revoke
+                    </button>
+                  )}
+                  {(s as any).isInvite && s.status === "pending" && (
+                    <button
+                      onClick={() => handleResendInvite(s.id)}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded text-xs font-medium transition-colors text-blue-600 hover:bg-blue-50 border border-transparent hover:border-blue-200"
+                    >
+                      <RotateCw size={14} /> Resend
                     </button>
                   )}
                 </td>
@@ -401,6 +430,11 @@ export function StaffManagementTab() {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Staff Detail Panel */}
+      {selectedStaff && (
+        <StaffDetailPanel member={selectedStaff} onClose={() => setSelectedStaff(null)} />
       )}
     </div>
   );

@@ -1,6 +1,7 @@
 import { Complaint, AdminRole } from "../../types";
 import { StaffManagementTab } from "./StaffManagementTab";
 import { AnalyticsTab } from "./AnalyticsTab";
+import { AuditLogsTab } from "./AuditLogsTab";
 import { SLA_WARNING_HOURS, SLA_BREACH_HOURS } from "@/config/features";
 import { Suspense, lazy, useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { ClientOnly } from "@/components/ClientOnly";
@@ -259,7 +260,7 @@ export function AdminDashboard({
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [activeTab, setActiveTab] = useState<"tickets" | "staff" | "analytics">("tickets");
+  const [activeTab, setActiveTab] = useState<"tickets" | "staff" | "analytics" | "audit">("tickets");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [slaEnabled, setSlaEnabled] = useState(() => {
@@ -929,6 +930,16 @@ export function AdminDashboard({
           >
             Analytics & SLAs
           </button>
+          <button
+            onClick={() => setActiveTab("audit")}
+            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
+              activeTab === "audit"
+                ? "border-blue-600 text-blue-600"
+                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+            }`}
+          >
+            Audit Logs
+          </button>
         </div>
       )}
 
@@ -936,6 +947,8 @@ export function AdminDashboard({
         <StaffManagementTab />
       ) : activeTab === "analytics" ? (
         <AnalyticsTab complaints={complaints} slaEnabled={slaEnabled} setSlaEnabled={setSlaEnabled} />
+      ) : activeTab === "audit" ? (
+        <AuditLogsTab />
       ) : (
         <>
           {/* Analytics Cards */}
