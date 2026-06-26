@@ -239,7 +239,7 @@ function TrackPage() {
                     }}
                     className="flex items-center gap-2 px-3 py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-sm font-mono text-slate-700 transition-colors"
                   >
-                    <MapIcon size={14} className="text-slate-400" />
+                    <MapPin size={14} className="text-slate-400" />
                     {token}
                   </button>
                 ))}

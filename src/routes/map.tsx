@@ -197,22 +197,22 @@ function PublicMapRoute() {
       <div className="pt-24 lg:pt-28 min-h-screen bg-slate-50 flex flex-col">
         <div className="container-x py-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4 z-10 relative">
           <div className="w-full sm:w-auto">
-            <Reveal width="100%">
+            <Reveal>
               <span className="eyebrow">Live Pulse</span>
             </Reveal>
-            <Reveal delay={80} width="100%">
+            <Reveal delay={80}>
               <h1 className="mt-2 text-3xl font-extrabold text-[color:var(--text-primary)] tracking-tight">
                 Public Issue Map
               </h1>
             </Reveal>
-            <Reveal delay={160} width="100%">
+            <Reveal delay={160}>
               <p className="mt-2 text-[color:var(--text-secondary)] text-sm sm:text-base">
                 Explore recent civic reports from your community.
               </p>
             </Reveal>
           </div>
 
-          <Reveal delay={200} width="100%" className="w-full sm:w-auto mt-2 sm:mt-0">
+          <Reveal delay={200} className="w-full sm:w-auto mt-2 sm:mt-0">
             <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto overflow-hidden">
               <div className="flex flex-col flex-1 sm:flex-none">
                 <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total</span>
@@ -235,7 +235,7 @@ function PublicMapRoute() {
             </div>
           </Reveal>
 
-          <Reveal delay={240} width="100%" className="w-full sm:w-auto mt-2 sm:mt-0">
+          <Reveal delay={240} className="w-full sm:w-auto mt-2 sm:mt-0">
             <div className="flex items-center justify-between sm:justify-start gap-2 sm:gap-3 bg-white p-1.5 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
               <div className="flex bg-slate-100 rounded-lg p-1 flex-1 sm:flex-none">
                 <button
@@ -317,7 +317,7 @@ function PublicMapRoute() {
         </div>
 
         {/* Category Pills */}
-        <Reveal delay={280} width="100%">
+        <Reveal delay={280}>
           <div className="container-x pb-4 pt-2 sm:pt-0">
             <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
               <button

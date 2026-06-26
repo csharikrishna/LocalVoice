@@ -51,6 +51,7 @@ export function StaffManagementTab() {
         role: i.role,
         department: i.department,
         status: i.status,
+        squad_id: null,
         isInvite: true
       }));
       setStaff([...activeStaff, ...pendingInvites]);
@@ -67,7 +68,7 @@ export function StaffManagementTab() {
     fetchStaff();
   }, []);
 
-  const handleToggleStatus = async (staffEmail: string, currentStatus: "active" | "suspended" | "pending" | "rejected") => {
+  const handleToggleStatus = async (staffEmail: string, currentStatus: string) => {
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) return;

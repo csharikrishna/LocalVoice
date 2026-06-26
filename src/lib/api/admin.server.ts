@@ -118,7 +118,7 @@ export async function handleGetInvitation(token: string) {
     return {
       ...data,
       createdAt: data.createdAt?.toMillis ? data.createdAt.toMillis() : null,
-    };
+    } as Record<string, any>;
   } catch (err) {
     console.error("Error fetching invitation", err);
     return null;

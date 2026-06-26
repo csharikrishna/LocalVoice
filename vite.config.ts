@@ -63,6 +63,7 @@ export default defineConfig(({ isSsrBuild }) => ({
           ].join("\n"),
         },
       },
+      // @ts-expect-error Nitro config typing does not include externals but it works
       externals: {
         external: CJS_EXTERNALS,
       },

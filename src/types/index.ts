@@ -26,7 +26,8 @@ export interface StaffMember {
   role: string;
   department: string | null;
   squad_id: string | null;
-  status: "active" | "suspended";
+  status: "active" | "suspended" | "pending" | "rejected" | "accepted";
+  isInvite?: boolean;
 }
 
 export interface AuditLog {
