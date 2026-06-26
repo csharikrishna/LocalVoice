@@ -25,9 +25,11 @@ async function verifySuperAdmin(token: string): Promise<boolean> {
       }
     }
 
+    const domain = (process.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "");
     if (
       decodedToken.email === process.env.VITE_ADMIN_EMAIL ||
-      decodedToken.email === process.env.ADMIN_EMAIL
+      decodedToken.email === process.env.ADMIN_EMAIL ||
+      (process.env.VITE_ADMIN_USERNAME && decodedToken.email === `${process.env.VITE_ADMIN_USERNAME}@${domain}.admin`)
     ) {
       return true;
     }
@@ -365,9 +367,11 @@ export async function handleGetAdminRole(adminToken: string) {
       }
     }
     
+    const domain = (process.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "");
     const isMasterAdmin = 
       decodedToken.email === process.env.VITE_ADMIN_EMAIL ||
-      decodedToken.email === process.env.ADMIN_EMAIL;
+      decodedToken.email === process.env.ADMIN_EMAIL ||
+      (process.env.VITE_ADMIN_USERNAME && decodedToken.email === `${process.env.VITE_ADMIN_USERNAME}@${domain}.admin`);
 
     if (adminData) {
       return {
