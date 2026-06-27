@@ -2,5 +2,25 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "buildCommand": "vite build",
   "outputDirectory": ".vercel/output",
-  "framework": null
+  "framework": null,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "s-maxage=0, stale-while-revalidate=0"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=31536000, immutable"
+        }
+      ]
+    }
+  ]
 }

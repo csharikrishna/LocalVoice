@@ -5,12 +5,14 @@ import {
   User,
   isSignInWithEmailLink,
   signInWithEmailLink,
+  signOut as firebaseSignOut,
 } from "firebase/auth";
 import { getAdminRole } from "@/lib/api/admin.functions";
+import { getAdminComplaints } from "@/lib/api/queries.functions";
 
-import { db, auth } from "@/lib/firebase";
-import { Loader2 } from "lucide-react";
-import { AdminRole } from "../types";
+import { auth } from "@/lib/firebase";
+import { AlertTriangle, Loader2, RefreshCw } from "lucide-react";
+import { AdminRole, Complaint } from "../types";
 
 import { AdminLogin } from "../components/admin/AdminLogin";
 import { AdminDashboard } from "../components/admin/AdminDashboard";
@@ -29,7 +31,7 @@ function AdminRouteWrapper() {
   const [role, setRole] = useState<AdminRole | null>(null);
   const [department, setDepartment] = useState<string | null>(null);
   const [squadId, setSquadId] = useState<string | null>(null);
-  const [agentId, setAgentId] = useState<string | null>(null);
+  const [initialComplaints, setInitialComplaints] = useState<Complaint[] | undefined>(undefined);
   const [loading, setLoading] = useState(true);
   const [errorMsg, setErrorMsg] = useState("");
 
@@ -62,20 +64,38 @@ function AdminRouteWrapper() {
               setRole("superadmin");
               setDepartment(null);
               setSquadId(null);
-              setAgentId(null);
+              try {
+                const token = await currentUser.getIdToken();
+                const complaints = await getAdminComplaints({ data: { adminToken: token } });
+                setInitialComplaints(complaints as Complaint[]);
+              } catch (e) {
+                console.error("Error fetching initial complaints:", e);
+              }
             } else if (username === standardAdmin) {
               setRole("admin");
               setDepartment(null);
               setSquadId(null);
-              setAgentId(null);
+              try {
+                const token = await currentUser.getIdToken();
+                const complaints = await getAdminComplaints({ data: { adminToken: token } });
+                setInitialComplaints(complaints as Complaint[]);
+              } catch (e) {
+                console.error("Error fetching initial complaints:", e);
+              }
             } else {
               try {
                 const token = await currentUser.getIdToken();
-                const data = await getAdminRole({ data: { adminToken: token } });
-                
-                if (data) {
+
+                // Optimize client waterfall by fetching complaints concurrently with role
+                const [roleResult, complaintsResult] = await Promise.allSettled([
+                  getAdminRole({ data: { adminToken: token } }),
+                  getAdminComplaints({ data: { adminToken: token } }),
+                ]);
+
+                if (roleResult.status === "fulfilled" && roleResult.value) {
+                  const data = roleResult.value;
                   if (data.status === "suspended") {
-                    await auth.signOut();
+                    await firebaseSignOut(auth);
                     setErrorMsg("Your account has been suspended by the administrator.");
                     setRole(null);
                     return;
@@ -83,13 +103,15 @@ function AdminRouteWrapper() {
                   setRole((data.role as AdminRole) || "department_admin");
                   setDepartment(data.department || null);
                   setSquadId(data.squad_id || null);
-                  setAgentId(data.agent_id || null);
                 } else {
                   setRole("department_admin");
                   setDepartment(null);
                 }
-              } catch (err) {
 
+                if (complaintsResult.status === "fulfilled") {
+                  setInitialComplaints(complaintsResult.value as Complaint[]);
+                }
+              } catch (err) {
                 console.error("Error fetching role:", err);
                 setRole("department_admin");
               }
@@ -123,24 +145,17 @@ function AdminRouteWrapper() {
   if (errorMsg) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
-        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center">
+        <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100">
           <div className="w-16 h-16 bg-red-100 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4">
-            <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"
-              />
-            </svg>
+            <AlertTriangle size={32} />
           </div>
           <h2 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h2>
           <p className="text-gray-600 mb-6">{errorMsg}</p>
           <button
             onClick={() => window.location.reload()}
-            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors"
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 rounded-lg transition-colors flex items-center justify-center gap-2"
           >
-            Try Again
+            <RefreshCw size={16} /> Try Again
           </button>
         </div>
       </div>
@@ -151,22 +166,52 @@ function AdminRouteWrapper() {
     return <AdminLogin />;
   }
 
+  // Department-specific dashboards pass the actual user role through
   if (role === "department_admin" || role === "field_worker") {
     switch (department) {
       case "Electrical":
-        return <ElectricalDashboard />;
+        return <ElectricalDashboard role={role} initialComplaints={initialComplaints} />;
       case "Sanitation":
-        return <SanitationDashboard />;
+        return <SanitationDashboard role={role} initialComplaints={initialComplaints} />;
       case "Water Board":
-        return <WaterDashboard />;
+        return <WaterDashboard role={role} initialComplaints={initialComplaints} />;
       case "Public Works":
-        return <PublicWorksDashboard />;
+        return <PublicWorksDashboard role={role} initialComplaints={initialComplaints} />;
       case "Parks & Rec":
-        return <ParksDashboard />;
+        return <ParksDashboard role={role} initialComplaints={initialComplaints} />;
       default:
-        return <div className="p-8 text-red-600">Error: Unknown Department "{department}"</div>;
+        return (
+          <div className="min-h-screen flex items-center justify-center bg-gray-50 px-4">
+            <div className="bg-white p-8 rounded-2xl shadow-xl max-w-md w-full text-center border border-gray-100">
+              <div className="w-16 h-16 bg-amber-100 text-amber-600 rounded-full flex items-center justify-center mx-auto mb-4">
+                <AlertTriangle size={32} />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 mb-2">Department Not Found</h2>
+              <p className="text-gray-600 mb-2">
+                Your account is assigned to department <strong>"{department || "None"}"</strong>,
+                which doesn't have a dashboard configured.
+              </p>
+              <p className="text-sm text-gray-500 mb-6">
+                Please contact your system administrator to assign you to a valid department.
+              </p>
+              <button
+                onClick={() => firebaseSignOut(auth)}
+                className="w-full bg-slate-900 hover:bg-slate-800 text-white font-medium py-2.5 rounded-lg transition-colors"
+              >
+                Sign Out
+              </button>
+            </div>
+          </div>
+        );
     }
   }
 
-  return <AdminDashboard role={role} department={department} squadId={squadId} />;
+  return (
+    <AdminDashboard
+      role={role}
+      department={department}
+      squadId={squadId}
+      initialComplaints={initialComplaints}
+    />
+  );
 }

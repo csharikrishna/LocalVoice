@@ -5,6 +5,18 @@ import ReactDOM from "react-dom/client";
 import { RouterProvider } from "@tanstack/react-router";
 import { getRouter } from "./router";
 import "./styles.css";
+import * as Sentry from "@sentry/react";
+
+Sentry.init({
+  dsn: import.meta.env.VITE_SENTRY_DSN || "",
+  integrations: [
+    Sentry.browserTracingIntegration(),
+    Sentry.replayIntegration(),
+  ],
+  tracesSampleRate: 1.0,
+  replaysSessionSampleRate: 0.1,
+  replaysOnErrorSampleRate: 1.0,
+});
 
 // --- Console Cleanup ---
 // Suppresses known harmless 3rd-party warnings for a cleaner developer experience.

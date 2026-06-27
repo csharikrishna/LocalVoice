@@ -1,5 +1,3 @@
-
-
 // Constants for image validation
 export const IMAGE_CONFIG = {
   MAX_SIZE_MB: 5,
@@ -41,5 +39,3 @@ export function validateImageFile(file: File): { valid: boolean; error?: string 
 
   return { valid: true };
 }
-
-

@@ -141,7 +141,11 @@ function ResearchPage() {
       <div className="container-x mt-24">
         <Reveal>
           <div className="mb-12 rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-white">
-            <img src="/images/field_research.png" alt="Field Research Illustration" className="w-full h-auto object-cover max-h-[400px]" />
+            <img
+              src="/images/field_research.png"
+              alt="Field Research Illustration"
+              className="w-full h-auto object-cover max-h-[400px]"
+            />
           </div>
         </Reveal>
         <Reveal>

@@ -106,7 +106,7 @@ function InvitePage() {
     <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center p-4">
       <div className="bg-white p-8 rounded-2xl shadow-xl shadow-slate-200/50 border border-slate-200 max-w-md w-full overflow-hidden relative">
         <div className="absolute top-0 left-0 w-full h-2 bg-gradient-to-r from-blue-500 to-indigo-500" />
-        
+
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-blue-50 text-blue-600 rounded-2xl flex items-center justify-center mx-auto mb-4 rotate-3">
             <Shield size={32} />
@@ -119,16 +119,24 @@ function InvitePage() {
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <div className="bg-slate-50 p-4 rounded-xl border border-slate-100 space-y-4 mb-8">
               <div>
-                <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">Email</p>
+                <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">
+                  Email
+                </p>
                 <p className="font-medium text-slate-900">{invite.email}</p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">Role</p>
-                <p className="font-medium text-slate-900 capitalize">{invite.role.replace("_", " ")}</p>
+                <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">
+                  Role
+                </p>
+                <p className="font-medium text-slate-900 capitalize">
+                  {invite.role.replace("_", " ")}
+                </p>
               </div>
               {invite.department && (
                 <div>
-                  <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">Department</p>
+                  <p className="text-xs uppercase tracking-wider font-bold text-slate-400 mb-1">
+                    Department
+                  </p>
                   <p className="font-medium text-slate-900">{invite.department}</p>
                 </div>
               )}
@@ -154,15 +162,22 @@ function InvitePage() {
         )}
 
         {step === "set_password" && (
-          <form onSubmit={handleAccept} className="animate-in fade-in slide-in-from-right-8 duration-500">
+          <form
+            onSubmit={handleAccept}
+            className="animate-in fade-in slide-in-from-right-8 duration-500"
+          >
             <p className="text-slate-600 mb-6 text-center">
-              Great! Let's secure your account. Please choose a password to complete your registration.
+              Great! Let's secure your account. Please choose a password to complete your
+              registration.
             </p>
-            
+
             <div className="mb-6">
               <label className="block text-sm font-medium text-slate-700 mb-2">Password</label>
               <div className="relative">
-                <Lock size={18} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" />
+                <Lock
+                  size={18}
+                  className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+                />
                 <input
                   type="password"
                   required

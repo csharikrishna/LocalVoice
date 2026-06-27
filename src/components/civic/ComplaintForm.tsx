@@ -46,12 +46,23 @@
  *   • Consistent error boundary messaging
  */
 
-import { useEffect, useRef, useState, useCallback, useMemo, useReducer, Suspense, lazy } from "react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  useCallback,
+  useMemo,
+  useReducer,
+  Suspense,
+  lazy,
+} from "react";
 const ComplaintMapLeaflet = lazy(() => import("./ComplaintMapLeaflet"));
 
 function ClientOnly({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
-  useEffect(() => { setMounted(true); }, []);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   return mounted ? <>{children}</> : null;
 }
 import {
@@ -698,12 +709,12 @@ export function ComplaintForm() {
             exifOrientation: 1,
             onProgress: (progress: number) => {
               dispatch({ type: "UPLOAD_PROGRESS", payload: 10 + Math.round(progress * 0.4) });
-            }
+            },
           };
-          
+
           const compressedFile = await imageCompression(selectedFile, options);
           dispatch({ type: "UPLOAD_PROGRESS", payload: 50 });
-          
+
           photoBase64 = await new Promise<string>((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = () => {
@@ -1176,8 +1187,12 @@ export function ComplaintForm() {
 
         {/* ── Email Notification ──────────────────────────────────────────────── */}
         <div className="mb-6 border-0 p-0 m-0">
-          <label htmlFor="email" className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2">
-            Get Notified <span className="font-normal text-[color:var(--text-muted)]">(optional)</span>
+          <label
+            htmlFor="email"
+            className="block text-sm font-semibold text-[color:var(--text-primary)] mb-2"
+          >
+            Get Notified{" "}
+            <span className="font-normal text-[color:var(--text-muted)]">(optional)</span>
           </label>
           <input
             id="email"
@@ -1374,7 +1389,13 @@ export function ComplaintForm() {
             {/* Map */}
             <div className="flex-1 relative min-h-0 bg-slate-50">
               <ClientOnly>
-                <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-[color:var(--primary)]" size={32} /></div>}>
+                <Suspense
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Loader2 className="animate-spin text-[color:var(--primary)]" size={32} />
+                    </div>
+                  }
+                >
                   <ComplaintMapLeaflet locationCoords={tempCoords} setTempCoords={setTempCoords} />
                 </Suspense>
               </ClientOnly>

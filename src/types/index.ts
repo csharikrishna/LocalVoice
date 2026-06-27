@@ -1,3 +1,6 @@
+export type ComplaintStatus = "open" | "working" | "closed";
+export type ComplaintPriority = "low" | "medium" | "high" | "critical";
+
 export interface Complaint {
   id: string;
   token?: string;
@@ -5,15 +8,15 @@ export interface Complaint {
   description: string;
   location: string;
   photoURL?: string;
-  status: string;
-  priority: string;
-  timestamp: any;
+  status: ComplaintStatus;
+  priority: ComplaintPriority;
+  timestamp: string | null; // ISO string after server serialization
   coordinates?: { lat: number; lng: number };
   department?: string | null;
   upvotes?: number;
   assigned_squad_id?: string | null;
   assigned_agent_id?: string | null;
-  resolvedAt?: any;
+  resolvedAt?: string | null; // ISO string after server serialization
   reporterEmail?: string;
   subscriberEmails?: string[];
 }

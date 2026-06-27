@@ -86,22 +86,25 @@ export function StaffDetailPanel({ member, onClose }: Props) {
   const [metrics, setMetrics] = useState<StaffMetrics | null>(null);
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const token = await auth.currentUser?.getIdToken();
-        if (!token) return;
-        const data = await getStaffMetrics({
-          data: { adminToken: token, staffEmail: member.email },
-        });
-        setMetrics(data as StaffMetrics);
-      } catch (err) {
-        console.error("Failed to load staff metrics:", err);
-      } finally {
-        setLoading(false);
-      }
+  const loadMetrics = async () => {
+    setLoading(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const data = await getStaffMetrics({
+        data: { adminToken: token, staffEmail: member.email },
+      });
+      setMetrics(data as StaffMetrics);
+    } catch (err) {
+      console.error("Failed to load staff metrics:", err);
+      setMetrics(null);
+    } finally {
+      setLoading(false);
     }
-    load();
+  };
+
+  useEffect(() => {
+    loadMetrics();
   }, [member.email]);
 
   return (
@@ -124,26 +127,42 @@ export function StaffDetailPanel({ member, onClose }: Props) {
               <div>
                 <p className="font-bold text-gray-900 text-lg">{member.email}</p>
                 <div className="flex items-center gap-2 mt-1">
-                  <span className={`text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${
-                    member.role === "admin" ? "bg-indigo-100 text-indigo-700" :
-                    member.role === "department_admin" ? "bg-purple-100 text-purple-700" :
-                    "bg-emerald-100 text-emerald-700"
-                  }`}>
+                  <span
+                    className={`text-[11px] uppercase tracking-wider font-bold px-2 py-0.5 rounded ${
+                      member.role === "admin"
+                        ? "bg-indigo-100 text-indigo-700"
+                        : member.role === "department_admin"
+                          ? "bg-purple-100 text-purple-700"
+                          : "bg-emerald-100 text-emerald-700"
+                    }`}
+                  >
                     {member.role.replace("_", " ")}
                   </span>
                   {member.department && (
                     <span className="text-xs text-gray-500">{member.department}</span>
                   )}
                 </div>
-                <span className={`inline-flex items-center gap-1 mt-1.5 text-xs font-medium ${
-                  member.status === "active" ? "text-green-600" :
-                  member.status === "suspended" ? "text-red-600" : "text-blue-600"
-                }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${
-                    member.status === "active" ? "bg-green-500" :
-                    member.status === "suspended" ? "bg-red-500" : "bg-blue-500"
-                  }`} />
-                  {member.status === "pending" ? "Invite Pending" : member.status.charAt(0).toUpperCase() + member.status.slice(1)}
+                <span
+                  className={`inline-flex items-center gap-1 mt-1.5 text-xs font-medium ${
+                    member.status === "active"
+                      ? "text-green-600"
+                      : member.status === "suspended"
+                        ? "text-red-600"
+                        : "text-blue-600"
+                  }`}
+                >
+                  <div
+                    className={`w-1.5 h-1.5 rounded-full ${
+                      member.status === "active"
+                        ? "bg-green-500"
+                        : member.status === "suspended"
+                          ? "bg-red-500"
+                          : "bg-blue-500"
+                    }`}
+                  />
+                  {member.status === "pending"
+                    ? "Invite Pending"
+                    : member.status.charAt(0).toUpperCase() + member.status.slice(1)}
                 </span>
               </div>
             </div>
@@ -169,7 +188,9 @@ export function StaffDetailPanel({ member, onClose }: Props) {
                 <div className="bg-gradient-to-br from-blue-50 to-blue-100/50 p-4 rounded-xl border border-blue-100">
                   <div className="flex items-center gap-2 text-blue-600 mb-2">
                     <Activity size={16} />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Total Actions</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      Total Actions
+                    </span>
                   </div>
                   <p className="text-2xl font-bold text-blue-900">{metrics.totalActions}</p>
                 </div>
@@ -185,14 +206,20 @@ export function StaffDetailPanel({ member, onClose }: Props) {
                     <Clock size={16} />
                     <span className="text-xs font-semibold uppercase tracking-wider">Avg Time</span>
                   </div>
-                  <p className="text-2xl font-bold text-amber-900">{formatDuration(metrics.avgResolutionMs)}</p>
+                  <p className="text-2xl font-bold text-amber-900">
+                    {formatDuration(metrics.avgResolutionMs)}
+                  </p>
                 </div>
                 <div className="bg-gradient-to-br from-purple-50 to-purple-100/50 p-4 rounded-xl border border-purple-100">
                   <div className="flex items-center gap-2 text-purple-600 mb-2">
                     <Zap size={16} />
-                    <span className="text-xs font-semibold uppercase tracking-wider">Last Active</span>
+                    <span className="text-xs font-semibold uppercase tracking-wider">
+                      Last Active
+                    </span>
                   </div>
-                  <p className="text-lg font-bold text-purple-900">{formatRelativeTime(metrics.lastActive)}</p>
+                  <p className="text-lg font-bold text-purple-900">
+                    {formatRelativeTime(metrics.lastActive)}
+                  </p>
                 </div>
               </div>
 
@@ -222,10 +249,13 @@ export function StaffDetailPanel({ member, onClose }: Props) {
                           </p>
                           {activity.details && Object.keys(activity.details).length > 0 && (
                             <p className="text-xs text-gray-400 mt-0.5 truncate">
-                              {activity.details.status ? `Status → ${activity.details.status}` :
-                               activity.details.email ? activity.details.email :
-                               activity.details.newStatus ? `→ ${activity.details.newStatus}` :
-                               ""}
+                              {activity.details.status
+                                ? `Status → ${activity.details.status}`
+                                : activity.details.email
+                                  ? activity.details.email
+                                  : activity.details.newStatus
+                                    ? `→ ${activity.details.newStatus}`
+                                    : ""}
                             </p>
                           )}
                           <p className="text-xs text-gray-400 mt-0.5">
@@ -239,7 +269,15 @@ export function StaffDetailPanel({ member, onClose }: Props) {
               </div>
             </>
           ) : (
-            <p className="text-sm text-gray-400 text-center py-8">Could not load metrics.</p>
+            <div className="flex flex-col items-center justify-center py-12">
+              <p className="text-sm text-gray-400 mb-4">Could not load metrics.</p>
+              <button
+                onClick={loadMetrics}
+                className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 transition-colors"
+              >
+                Retry
+              </button>
+            </div>
           )}
         </div>
       </div>

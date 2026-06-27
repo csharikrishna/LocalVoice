@@ -118,7 +118,11 @@ function ImpactPage() {
         <div className="container-x">
           <Reveal>
             <div className="mb-14 rounded-3xl overflow-hidden shadow-lg border border-slate-200 bg-white max-w-5xl mx-auto">
-              <img src="/images/clean_neighborhood.png" alt="Clean Neighborhood Impact" className="w-full h-auto object-cover max-h-[450px]" />
+              <img
+                src="/images/clean_neighborhood.png"
+                alt="Clean Neighborhood Impact"
+                className="w-full h-auto object-cover max-h-[450px]"
+              />
             </div>
           </Reveal>
           <div className="max-w-3xl mx-auto text-center">

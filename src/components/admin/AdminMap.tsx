@@ -42,14 +42,16 @@ function HeatmapLayer({ points }: { points: [number, number, number][] }) {
     const initHeatmap = async () => {
       (window as LeafletWindow).L = L;
       await import("leaflet.heat");
-      
+
       if (!isMounted) return;
 
-      heatLayer = (L as any).heatLayer(points, {
-        radius: 25,
-        blur: 15,
-        maxZoom: 17,
-      }).addTo(map);
+      heatLayer = (L as any)
+        .heatLayer(points, {
+          radius: 25,
+          blur: 15,
+          maxZoom: 17,
+        })
+        .addTo(map);
     };
 
     initHeatmap();
@@ -96,9 +98,9 @@ const AdminMap = memo(function AdminMap({
     focusedLocation ||
     (complaintsWithCoords.length > 0
       ? ([complaintsWithCoords[0].coordinates!.lat, complaintsWithCoords[0].coordinates!.lng] as [
-        number,
-        number,
-      ])
+          number,
+          number,
+        ])
       : DEFAULT_CENTER);
 
   const heatPoints = useMemo(

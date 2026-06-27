@@ -5,8 +5,6 @@ import { CATEGORIES, DESCRIPTION_MAX, type CategoryId } from "../civic-logic";
 
 const CATEGORY_IDS = CATEGORIES.map((category) => category.id) as [CategoryId, ...CategoryId[]];
 
-
-
 export const submitComplaintSchema = z.object({
   category: z.enum(CATEGORY_IDS),
   location: z.string().trim().min(1).max(500),
@@ -25,7 +23,7 @@ export const submitComplaintSchema = z.object({
   isAnonymous: z.boolean(),
   captchaToken: z.string().min(1),
   clientId: z.string().min(8).max(128).optional(),
-  email: z.string().email().optional().or(z.literal('')),
+  email: z.string().email().optional().or(z.literal("")),
 });
 
 export type SubmitComplaintInput = z.infer<typeof submitComplaintSchema>;
@@ -43,18 +41,20 @@ export const submitComplaint = createServerFn({ method: "POST" })
   });
 
 export const upvoteComplaint = createServerFn({ method: "POST" })
-  .validator(z.object({ id: z.string(), email: z.string().email().optional().or(z.literal('')) }))
+  .validator(z.object({ id: z.string(), email: z.string().email().optional().or(z.literal("")) }))
   .handler(async ({ data }) => {
     const { handleUpvoteComplaint } = await import("./complaints.server");
     return handleUpvoteComplaint(data.id, data.email);
   });
 
 export const sendReceiptEmail = createServerFn({ method: "POST" })
-  .validator(z.object({ 
-    token: z.string(),
-    email: z.string().email(),
-    base64Image: z.string().regex(/^data:image\/(jpeg|png|webp);base64,/)
-  }))
+  .validator(
+    z.object({
+      token: z.string(),
+      email: z.string().email(),
+      base64Image: z.string().regex(/^data:image\/(jpeg|png|webp);base64,/),
+    }),
+  )
   .handler(async ({ data }) => {
     const { handleSendReceiptEmail } = await import("./complaints.server");
     return handleSendReceiptEmail(data);

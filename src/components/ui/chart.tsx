@@ -69,8 +69,8 @@ const ChartStyle = ({ id, config }: { id: string; config: ChartConfig }) => {
   }
 
   return (
-    <style>{
-      Object.entries(THEMES)
+    <style>
+      {Object.entries(THEMES)
         .map(
           ([theme, prefix]) => `
 ${prefix} [data-chart=${id}] {
@@ -83,8 +83,8 @@ ${colorConfig
 }
 `,
         )
-        .join("\n")
-    }</style>
+        .join("\n")}
+    </style>
   );
 };
 

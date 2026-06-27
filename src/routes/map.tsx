@@ -85,7 +85,7 @@ function PublicMapRoute() {
           toast.error("Unable to retrieve your location.");
         }
       },
-      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 }
+      { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 },
     );
   };
 
@@ -137,7 +137,7 @@ function PublicMapRoute() {
       // Simple prompt for MVP to collect optional email
       const email = window.prompt(
         "Thanks for upvoting! Optional: Enter your email to get notified when this issue is resolved.",
-        ""
+        "",
       );
       if (email !== null && email.trim() !== "" && !email.includes("@")) {
         toast.error("Please enter a valid email address, or leave it blank.");
@@ -169,10 +169,10 @@ function PublicMapRoute() {
     let statusMatch = true;
     if (filter === "open") statusMatch = c.status === "open" || c.status === "working";
     if (filter === "resolved") statusMatch = c.status === "closed";
-    
+
     let categoryMatch = true;
     if (categoryFilter !== "all") categoryMatch = c.category === categoryFilter;
-    
+
     return statusMatch && categoryMatch;
   });
 
@@ -216,21 +216,27 @@ function PublicMapRoute() {
             <Reveal delay={200} className="w-full sm:w-auto">
               <div className="flex justify-between sm:justify-start gap-4 sm:gap-6 bg-white px-5 py-4 rounded-xl border border-slate-200 shadow-sm w-full sm:w-auto">
                 <div className="flex flex-col items-center sm:items-start flex-1 sm:flex-none">
-                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">Total</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-slate-500 uppercase tracking-wider">
+                    Total
+                  </span>
                   <span className="text-2xl font-black text-slate-900">{complaints.length}</span>
                 </div>
                 <div className="w-px bg-slate-200"></div>
                 <div className="flex flex-col items-center sm:items-start flex-1 sm:flex-none">
-                  <span className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider">Resolved</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-emerald-600 uppercase tracking-wider">
+                    Resolved
+                  </span>
                   <span className="text-2xl font-black text-emerald-600">
-                    {complaints.filter(c => c.status === "closed").length}
+                    {complaints.filter((c) => c.status === "closed").length}
                   </span>
                 </div>
                 <div className="w-px bg-slate-200"></div>
                 <div className="flex flex-col items-center sm:items-start flex-1 sm:flex-none">
-                  <span className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider">In Progress</span>
+                  <span className="text-[10px] sm:text-xs font-bold text-amber-600 uppercase tracking-wider">
+                    In Progress
+                  </span>
                   <span className="text-2xl font-black text-amber-600">
-                    {complaints.filter(c => c.status === "working").length}
+                    {complaints.filter((c) => c.status === "working").length}
                   </span>
                 </div>
               </div>
@@ -259,69 +265,80 @@ function PublicMapRoute() {
                     className="w-full flex items-center justify-center gap-1.5 px-3 py-1.5 text-sm font-semibold bg-white border border-slate-200 rounded-md text-slate-700 hover:bg-slate-50 transition-colors shadow-sm"
                   >
                     <Filter size={14} className="text-slate-400" />
-                  <span className="hidden sm:inline">
-                    {filter === "all" ? "All Issues" : filter === "open" ? "Unresolved" : "Resolved"}
-                  </span>
-                  <span className="sm:hidden">Filter</span>
-                  <ChevronDown
-                    size={14}
-                    className={`text-slate-400 transition-transform ${isFilterOpen ? "rotate-180" : ""}`}
-                  />
-                </button>
+                    <span className="hidden sm:inline">
+                      {filter === "all"
+                        ? "All Issues"
+                        : filter === "open"
+                          ? "Unresolved"
+                          : "Resolved"}
+                    </span>
+                    <span className="sm:hidden">Filter</span>
+                    <ChevronDown
+                      size={14}
+                      className={`text-slate-400 transition-transform ${isFilterOpen ? "rotate-180" : ""}`}
+                    />
+                  </button>
 
-                {isFilterOpen && (
-                  <>
-                    <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
-                    <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-[var(--shadow-lg)] z-50 py-1 overflow-hidden origin-top-right animate-in fade-in zoom-in duration-200">
-                      <button
-                        onClick={() => {
-                          setFilter("all");
-                          setIsFilterOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "all" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
-                      >
-                        All Issues
-                        {filter === "all" && (
-                          <CheckCircle2 size={14} className="text-[color:var(--primary)]" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFilter("open");
-                          setIsFilterOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "open" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
-                      >
-                        Unresolved
-                        {filter === "open" && (
-                          <CheckCircle2 size={14} className="text-[color:var(--primary)]" />
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          setFilter("resolved");
-                          setIsFilterOpen(false);
-                        }}
-                        className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "resolved" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
-                      >
-                        Resolved
-                        {filter === "resolved" && (
-                          <CheckCircle2 size={14} className="text-[color:var(--primary)]" />
-                        )}
-                      </button>
-                    </div>
-                  </>
-                )}
+                  {isFilterOpen && (
+                    <>
+                      <div className="fixed inset-0 z-40" onClick={() => setIsFilterOpen(false)} />
+                      <div className="absolute right-0 mt-2 w-48 bg-white border border-slate-200 rounded-xl shadow-[var(--shadow-lg)] z-50 py-1 overflow-hidden origin-top-right animate-in fade-in zoom-in duration-200">
+                        <button
+                          onClick={() => {
+                            setFilter("all");
+                            setIsFilterOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "all" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
+                        >
+                          All Issues
+                          {filter === "all" && (
+                            <CheckCircle2 size={14} className="text-[color:var(--primary)]" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFilter("open");
+                            setIsFilterOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "open" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
+                        >
+                          Unresolved
+                          {filter === "open" && (
+                            <CheckCircle2 size={14} className="text-[color:var(--primary)]" />
+                          )}
+                        </button>
+                        <button
+                          onClick={() => {
+                            setFilter("resolved");
+                            setIsFilterOpen(false);
+                          }}
+                          className={`w-full text-left px-4 py-2.5 text-sm font-medium transition-colors hover:bg-slate-50 flex items-center justify-between ${filter === "resolved" ? "text-[color:var(--primary)] bg-[color:var(--primary)]/5" : "text-slate-700"}`}
+                        >
+                          Resolved
+                          {filter === "resolved" && (
+                            <CheckCircle2 size={14} className="text-[color:var(--primary)]" />
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
+                </div>
               </div>
-            </div>
-          </Reveal>
+            </Reveal>
           </div>
         </div>
 
         {/* Category Pills */}
         <Reveal delay={280}>
           <div className="container-x pb-4 pt-2 sm:pt-0">
-            <div className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide" style={{ WebkitOverflowScrolling: 'touch', msOverflowStyle: 'none', scrollbarWidth: 'none' }}>
+            <div
+              className="flex items-center gap-2 overflow-x-auto pb-2 scrollbar-hide"
+              style={{
+                WebkitOverflowScrolling: "touch",
+                msOverflowStyle: "none",
+                scrollbarWidth: "none",
+              }}
+            >
               <button
                 onClick={() => setCategoryFilter("all")}
                 className={`flex-shrink-0 px-4 py-2 rounded-full text-sm font-semibold transition-all border ${
@@ -332,7 +349,7 @@ function PublicMapRoute() {
               >
                 All Categories
               </button>
-              {CATEGORIES.filter(c => c.id !== "other").map((category) => {
+              {CATEGORIES.filter((c) => c.id !== "other").map((category) => {
                 const Icon = category.icon;
                 const isSelected = categoryFilter === category.id;
                 return (
@@ -381,8 +398,20 @@ function PublicMapRoute() {
                   )}
                 </button>
               </div>
-              <ClientOnly fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-[color:var(--primary)]" size={32} /></div>}>
-                <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-[color:var(--primary)]" size={32} /></div>}>
+              <ClientOnly
+                fallback={
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Loader2 className="animate-spin text-[color:var(--primary)]" size={32} />
+                  </div>
+                }
+              >
+                <Suspense
+                  fallback={
+                    <div className="w-full h-full flex items-center justify-center">
+                      <Loader2 className="animate-spin text-[color:var(--primary)]" size={32} />
+                    </div>
+                  }
+                >
                   <PublicMapLeaflet
                     mapCenter={mapCenter}
                     complaintsWithCoords={complaintsWithCoords}
@@ -448,7 +477,11 @@ function PublicMapRoute() {
                             <span className="text-xs text-slate-400 flex items-center gap-1">
                               <Clock size={12} />
                               {c.timestamp
-                                ? new Date(typeof c.timestamp === 'string' ? c.timestamp : c.timestamp.toDate?.() || c.timestamp).toLocaleDateString()
+                                ? new Date(
+                                    typeof c.timestamp === "string"
+                                      ? c.timestamp
+                                      : c.timestamp.toDate?.() || c.timestamp,
+                                  ).toLocaleDateString()
                                 : "Recent"}
                             </span>
                           </div>

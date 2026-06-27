@@ -1,6 +1,17 @@
 export const DESCRIPTION_MAX = 300;
 
-import { Droplet, Zap, Trash2, Route, Waves, Lightbulb, MapPin, Bath, TreePine, AlertTriangle } from "lucide-react";
+import {
+  Droplet,
+  Zap,
+  Trash2,
+  Route,
+  Waves,
+  Lightbulb,
+  MapPin,
+  Bath,
+  TreePine,
+  AlertTriangle,
+} from "lucide-react";
 
 export const CATEGORIES = [
   { id: "streetlight", label: "Streetlight", icon: Lightbulb },

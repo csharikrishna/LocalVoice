@@ -37,21 +37,25 @@ export const getInvites = createServerFn({ method: "POST" })
   });
 
 export const updateComplaint = createServerFn({ method: "POST" })
-  .validator(z.object({
-    adminToken: z.string(),
-    complaintId: z.string(),
-    updates: z.record(z.any()),
-  }))
+  .validator(
+    z.object({
+      adminToken: z.string(),
+      complaintId: z.string(),
+      updates: z.record(z.any()),
+    }),
+  )
   .handler(async ({ data }) => {
     const { handleUpdateComplaint } = await import("./admin.server");
     return handleUpdateComplaint(data);
   });
 
 export const deleteComplaints = createServerFn({ method: "POST" })
-  .validator(z.object({
-    adminToken: z.string(),
-    complaintIds: z.array(z.string()),
-  }))
+  .validator(
+    z.object({
+      adminToken: z.string(),
+      complaintIds: z.array(z.string()),
+    }),
+  )
   .handler(async ({ data }) => {
     const { handleDeleteComplaints } = await import("./admin.server");
     return handleDeleteComplaints(data);
@@ -94,10 +98,16 @@ export const getAdminRole = createServerFn({ method: "POST" })
   });
 
 export const revokeInvite = createServerFn({ method: "POST" })
-  .validator(z.object({ adminToken: z.string(), inviteId: z.string() }))
+  .validator(
+    z.object({
+      adminToken: z.string(),
+      inviteId: z.string(),
+      reason: z.enum(["mistake", "revoked"]),
+    }),
+  )
   .handler(async ({ data }) => {
     const { handleRevokeInvite } = await import("./admin.server");
-    return handleRevokeInvite(data.adminToken, data.inviteId);
+    return handleRevokeInvite(data.adminToken, data.inviteId, data.reason);
   });
 
 export const resendInvite = createServerFn({ method: "POST" })
@@ -107,8 +117,21 @@ export const resendInvite = createServerFn({ method: "POST" })
     return handleResendInvite(data.adminToken, data.inviteId);
   });
 
+export const deleteStaff = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string(), staffId: z.string(), email: z.string() }))
+  .handler(async ({ data }) => {
+    const { handleDeleteStaff } = await import("./admin.server");
+    return handleDeleteStaff(data.adminToken, data.staffId, data.email);
+  });
+
 export const getAuditLogs = createServerFn({ method: "POST" })
-  .validator(z.object({ adminToken: z.string(), limit: z.number().optional(), actionFilter: z.string().optional() }))
+  .validator(
+    z.object({
+      adminToken: z.string(),
+      limit: z.number().optional(),
+      actionFilter: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const { handleGetAuditLogs } = await import("./admin.server");
     return handleGetAuditLogs(data.adminToken, data.limit, data.actionFilter);
@@ -119,4 +142,11 @@ export const getStaffMetrics = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { handleGetStaffMetrics } = await import("./admin.server");
     return handleGetStaffMetrics(data.adminToken, data.staffEmail);
+  });
+
+export const getSystemHealth = createServerFn({ method: "POST" })
+  .validator(z.object({ adminToken: z.string() }))
+  .handler(async ({ data }) => {
+    const { handleGetSystemHealth } = await import("./admin.server");
+    return handleGetSystemHealth(data.adminToken);
   });

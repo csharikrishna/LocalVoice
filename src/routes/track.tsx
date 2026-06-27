@@ -124,11 +124,11 @@ function TrackPage() {
 
   const handleUpvote = async () => {
     if (!result) return;
-    
+
     // Simple prompt for MVP to collect optional email
     const email = window.prompt(
       "Thanks for upvoting! Optional: Enter your email to get notified when this issue is resolved.",
-      ""
+      "",
     );
     if (email !== null && email.trim() !== "" && !email.includes("@")) {
       toast.error("Please enter a valid email address, or leave it blank.");
@@ -228,7 +228,9 @@ function TrackPage() {
         {recentTokens.length > 0 && !searched && (
           <Reveal delay={300}>
             <div className="mt-6">
-              <h3 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">Your Recent Reports</h3>
+              <h3 className="text-sm font-semibold text-slate-500 mb-3 uppercase tracking-wider">
+                Your Recent Reports
+              </h3>
               <div className="flex flex-wrap gap-2">
                 {recentTokens.map((token) => (
                   <button
@@ -315,7 +317,11 @@ function TrackPage() {
                       <div className="flex items-center gap-1.5 text-sm text-[color:var(--text-secondary)]">
                         <Clock size={14} />
                         {result.timestamp
-                          ? new Date(typeof result.timestamp === 'string' ? result.timestamp : result.timestamp.toDate?.() || result.timestamp).toLocaleDateString("en-IN", {
+                          ? new Date(
+                              typeof result.timestamp === "string"
+                                ? result.timestamp
+                                : result.timestamp.toDate?.() || result.timestamp,
+                            ).toLocaleDateString("en-IN", {
                               day: "numeric",
                               month: "long",
                               year: "numeric",

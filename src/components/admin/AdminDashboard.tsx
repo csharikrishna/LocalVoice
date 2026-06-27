@@ -3,24 +3,24 @@ import { StaffManagementTab } from "./StaffManagementTab";
 import { AnalyticsTab } from "./AnalyticsTab";
 import { AuditLogsTab } from "./AuditLogsTab";
 import { SLA_WARNING_HOURS, SLA_BREACH_HOURS } from "@/config/features";
-import { Suspense, lazy, useState, useEffect, useRef, useCallback, useMemo } from "react";
-import { ClientOnly } from "@/components/ClientOnly";
 import {
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  onAuthStateChanged,
-  signOut,
-  User,
-  isSignInWithEmailLink,
-  signInWithEmailLink,
-  sendSignInLinkToEmail,
-} from "firebase/auth";
-import { db, auth } from "@/lib/firebase";
+  Suspense,
+  lazy,
+  useState,
+  useEffect,
+  useRef,
+  useCallback,
+  useMemo,
+  Component,
+  type ReactNode,
+} from "react";
+import { ClientOnly } from "@/components/ClientOnly";
+import { signOut } from "firebase/auth";
+import { auth } from "@/lib/firebase";
 import { useGeolocation } from "@/hooks/useGeolocation";
 import {
   Loader2,
   MapPin,
-  Lock,
   LogOut,
   Download,
   ArrowUpDown,
@@ -57,8 +57,40 @@ import { updateComplaint, deleteComplaints } from "@/lib/api/admin.functions";
 import { getAdminComplaints } from "@/lib/api/queries.functions";
 
 const AdminMap = lazy(() => import("./AdminMap"));
+const SystemHealthTab = lazy(() => import("./SystemHealthTab"));
 
-
+// ============================================================
+// Error Boundary for Map
+// ============================================================
+class MapErrorBoundary extends Component<{ children: ReactNode }, { hasError: boolean }> {
+  constructor(props: { children: ReactNode }) {
+    super(props);
+    this.state = { hasError: false };
+  }
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+  componentDidCatch(error: Error) {
+    console.error("Map failed to load:", error);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-gray-50 text-gray-500 gap-3">
+          <MapPin size={32} className="text-gray-400" />
+          <p className="font-medium">Map failed to load</p>
+          <button
+            onClick={() => this.setState({ hasError: false })}
+            className="text-sm text-blue-600 hover:text-blue-700 font-medium"
+          >
+            Try Again
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
 
 // ============================================================
 // Inline Status/Department Select (uncontrolled to avoid re-render issues)
@@ -149,7 +181,7 @@ function DepartmentSelect({
       <option value="Electrical">Electrical</option>
       <option value="Water Board">Water Board</option>
       <option value="Public Works">Public Works</option>
-      <option value="Parks & Rec">Parks &amp; Rec</option>
+      <option value="Parks & Rec">Parks & Rec</option>
     </select>
   );
 }
@@ -205,7 +237,7 @@ function FilterDropdown({
       </button>
 
       {isOpen && (
-        <div className="absolute z-50 w-full min-w-[160px] mt-1 bg-white border border-gray-100 rounded-lg shadow-xl shadow-blue-900/5 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
+        <div className="absolute z-30 w-full min-w-[160px] mt-1 bg-white border border-gray-100 rounded-lg shadow-xl shadow-blue-900/5 py-1 animate-in fade-in slide-in-from-top-2 duration-200">
           {options.map((option) => {
             const isSelected = option.value === value;
             return (
@@ -243,13 +275,16 @@ export function AdminDashboard({
   role,
   department,
   squadId,
+  initialComplaints,
 }: {
   role: AdminRole;
   department?: string | null;
   squadId?: string | null;
+  initialComplaints?: Complaint[];
 }) {
-  const [complaints, setComplaints] = useState<Complaint[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [complaints, setComplaints] = useState<Complaint[]>(initialComplaints || []);
+  const [loading, setLoading] = useState(!initialComplaints);
+  const [loadingMore, setLoadingMore] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [sorting, setSorting] = useState<SortingState>([]);
   const [globalFilter, setGlobalFilter] = useState("");
@@ -260,7 +295,9 @@ export function AdminDashboard({
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
 
   const [showHeatmap, setShowHeatmap] = useState(false);
-  const [activeTab, setActiveTab] = useState<"tickets" | "staff" | "analytics" | "audit">("tickets");
+  const [activeTab, setActiveTab] = useState<
+    "tickets" | "staff" | "analytics" | "audit" | "health"
+  >("tickets");
   const searchTimerRef = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
   const [slaEnabled, setSlaEnabled] = useState(() => {
@@ -307,9 +344,11 @@ export function AdminDashboard({
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("Not authenticated");
-      const res = await deleteComplaints({ data: { adminToken: token, complaintIds: selectedIds } });
+      const res = await deleteComplaints({
+        data: { adminToken: token, complaintIds: selectedIds },
+      });
       if (!res.ok) throw new Error(res.message);
-      
+
       setComplaints((prev) => prev.filter((c) => !selectedIds.includes(c.id)));
       setRowSelection({});
       toast.success(`Deleted ${selectedIds.length} issues successfully.`);
@@ -339,9 +378,34 @@ export function AdminDashboard({
     }
   }, []);
 
+  const loadMoreComplaints = useCallback(async () => {
+    if (complaints.length === 0) return;
+    setLoadingMore(true);
+    try {
+      const token = await auth.currentUser?.getIdToken();
+      if (!token) return;
+      const lastComplaint = complaints[complaints.length - 1];
+      const data = await getAdminComplaints({
+        data: { adminToken: token, cursor: lastComplaint.id },
+      });
+      if (data && Array.isArray(data) && data.length > 0) {
+        setComplaints((prev) => [...prev, ...(data as any)]);
+      } else {
+        toast.info("No more older complaints to load.");
+      }
+    } catch (error) {
+      console.error("Error fetching more complaints:", error);
+      toast.error("Failed to load more complaints");
+    } finally {
+      setLoadingMore(false);
+    }
+  }, [complaints]);
+
   useEffect(() => {
-    fetchComplaints();
-  }, [fetchComplaints]);
+    if (!initialComplaints) {
+      fetchComplaints();
+    }
+  }, [fetchComplaints, initialComplaints]);
 
   // ── Debounced search ──
   const handleSearchChange = useCallback((value: string) => {
@@ -357,6 +421,11 @@ export function AdminDashboard({
       if (searchTimerRef.current) clearTimeout(searchTimerRef.current);
     };
   }, []);
+
+  // ── Reset pagination when filters change ──
+  useEffect(() => {
+    table.setPageIndex(0);
+  }, [statusFilter, categoryFilter, globalFilter]);
 
   // ── Memoised derived data ──
   const domainComplaints = useMemo(() => {
@@ -408,11 +477,15 @@ export function AdminDashboard({
   const handleStatusChange = useCallback(
     async (id: string, newStatus: string) => {
       // Optimistic local update
-      setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, status: newStatus } : c)));
+      setComplaints((prev) =>
+        prev.map((c) => (c.id === id ? { ...c, status: newStatus as any } : c)),
+      );
       try {
         const token = await auth.currentUser?.getIdToken();
         if (!token) throw new Error("Not authenticated");
-        const res = await updateComplaint({ data: { adminToken: token, complaintId: id, updates: { status: newStatus } } });
+        const res = await updateComplaint({
+          data: { adminToken: token, complaintId: id, updates: { status: newStatus } },
+        });
         if (!res.ok) throw new Error(res.message);
         toast.success(
           `Status updated to "${newStatus === "open" ? "Open" : newStatus === "working" ? "In Progress" : "Closed"}"`,
@@ -435,7 +508,9 @@ export function AdminDashboard({
       try {
         const token = await auth.currentUser?.getIdToken();
         if (!token) throw new Error("Not authenticated");
-        const res = await updateComplaint({ data: { adminToken: token, complaintId: id, updates: { department: newDepartment } } });
+        const res = await updateComplaint({
+          data: { adminToken: token, complaintId: id, updates: { department: newDepartment } },
+        });
         if (!res.ok) throw new Error(res.message);
         toast.success(`Department updated to "${newDepartment || "Unassigned"}"`);
       } catch (err) {
@@ -452,9 +527,11 @@ export function AdminDashboard({
     try {
       const token = await auth.currentUser?.getIdToken();
       if (!token) throw new Error("Not authenticated");
-      const res = await updateComplaint({ data: { adminToken: token, complaintId: id, updates: { description: newDesc } } });
+      const res = await updateComplaint({
+        data: { adminToken: token, complaintId: id, updates: { description: newDesc } },
+      });
       if (!res.ok) throw new Error(res.message);
-      
+
       setComplaints((prev) => prev.map((c) => (c.id === id ? { ...c, description: newDesc } : c)));
       toast.success("Description updated");
       setEditingId(null);
@@ -471,7 +548,7 @@ export function AdminDashboard({
       if (!token) throw new Error("Not authenticated");
       const res = await deleteComplaints({ data: { adminToken: token, complaintIds: [id] } });
       if (!res.ok) throw new Error(res.message);
-      
+
       setComplaints((prev) => prev.filter((c) => c.id !== id));
       toast.success("Issue deleted");
     } catch (err) {
@@ -521,7 +598,7 @@ export function AdminDashboard({
               }
             : "N/A",
           description: c.description,
-          date: c.timestamp ? new Date(typeof c.timestamp === 'string' ? c.timestamp : c.timestamp.toDate?.() || c.timestamp).toLocaleString() : "",
+          date: c.timestamp ? new Date(c.timestamp).toLocaleString() : "",
           upvotes: c.upvotes || 0,
           photo: c.photoURL
             ? { formula: `IMAGE("${c.photoURL}")`, result: "Photo Link" }
@@ -531,14 +608,14 @@ export function AdminDashboard({
         // Color code status column
         const statusCell = row.getCell("status");
         if (c.status === "open") {
-          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } }; // red-100
-          statusCell.font = { color: { argb: "FF991B1B" }, bold: true }; // red-800
+          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEE2E2" } };
+          statusCell.font = { color: { argb: "FF991B1B" }, bold: true };
         } else if (c.status === "working") {
-          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } }; // amber-100
-          statusCell.font = { color: { argb: "FF92400E" }, bold: true }; // amber-800
+          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFFEF3C7" } };
+          statusCell.font = { color: { argb: "FF92400E" }, bold: true };
         } else if (c.status === "closed") {
-          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } }; // green-100
-          statusCell.font = { color: { argb: "FF166534" }, bold: true }; // green-800
+          statusCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FFDCFCE7" } };
+          statusCell.font = { color: { argb: "FF166534" }, bold: true };
         }
       });
 
@@ -567,10 +644,20 @@ export function AdminDashboard({
     setLightboxImage(url);
   }, []);
 
+  // ── Determine which tabs are visible based on role ──
+  const canSeeStaff = role === "superadmin";
+  const canSeeAnalytics = role === "superadmin" || role === "admin";
+  const canSeeAudit = role === "superadmin";
+  const canSeeHealth = role === "superadmin";
+  const canEditDescription = role === "superadmin";
+  const canDelete = role === "superadmin";
+  const canAssignDepartment = role === "superadmin" || role === "admin";
+  const hasTabs = canSeeStaff || canSeeAnalytics || canSeeAudit || canSeeHealth;
+
   // ── Table columns ──
   const columns = useMemo(
     () => [
-      ...(role === "superadmin" && isSelectMode
+      ...(canDelete && isSelectMode
         ? [
             columnHelper.display({
               id: "select",
@@ -653,16 +740,29 @@ export function AdminDashboard({
           />
         ),
       }),
-      columnHelper.accessor("department", {
-        header: "Department",
-        cell: (info) => (
-          <DepartmentSelect
-            id={info.row.original.id}
-            currentValue={info.getValue() || ""}
-            onChange={handleDepartmentChange}
-          />
-        ),
-      }),
+      ...(canAssignDepartment
+        ? [
+            columnHelper.accessor("department", {
+              header: "Department",
+              cell: (info) => (
+                <DepartmentSelect
+                  id={info.row.original.id}
+                  currentValue={info.getValue() || ""}
+                  onChange={handleDepartmentChange}
+                />
+              ),
+            }),
+          ]
+        : [
+            columnHelper.accessor("department", {
+              header: "Department",
+              cell: (info) => (
+                <span className="text-sm text-gray-700">
+                  {info.getValue() || <span className="text-gray-400 italic">Unassigned</span>}
+                </span>
+              ),
+            }),
+          ]),
       columnHelper.accessor("location", {
         header: "Location",
         cell: (info) => {
@@ -727,7 +827,7 @@ export function AdminDashboard({
           return (
             <div className="text-sm truncate max-w-[250px] group relative flex items-center justify-between">
               <span title={info.getValue()}>{info.getValue()}</span>
-              {role === "superadmin" && (
+              {canEditDescription && (
                 <button
                   onClick={(e) => {
                     e.stopPropagation();
@@ -748,41 +848,50 @@ export function AdminDashboard({
         header: "Date",
         cell: (info) => {
           const ts = info.getValue();
-          const dateStr = ts ? new Date(typeof ts === 'string' ? ts : ts.toDate?.() || ts).toLocaleString() : "";
-          
+          const dateStr = ts ? new Date(ts).toLocaleString() : "";
+
           if (!slaEnabled || !ts) {
-             return <span className="text-sm text-gray-500 whitespace-nowrap">{dateStr}</span>;
+            return <span className="text-sm text-gray-500 whitespace-nowrap">{dateStr}</span>;
           }
 
-          const createdAt = new Date(typeof ts === 'string' ? ts : ts.toDate?.() || ts);
+          const createdAt = new Date(ts);
           const complaint = info.row.original;
           let isBreached = false;
           let isWarning = false;
 
           if (complaint.status === "closed" && complaint.resolvedAt) {
-             const resolvedDate = new Date(complaint.resolvedAt?.toDate?.() || complaint.resolvedAt);
-             const diffHours = (resolvedDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-             isBreached = diffHours > SLA_BREACH_HOURS;
+            const resolvedDate = new Date(complaint.resolvedAt);
+            const diffHours = (resolvedDate.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+            isBreached = diffHours > SLA_BREACH_HOURS;
           } else if (complaint.status !== "closed") {
-             const diffHours = (new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60);
-             isBreached = diffHours > SLA_BREACH_HOURS;
-             isWarning = diffHours > SLA_WARNING_HOURS && !isBreached;
+            const diffHours = (new Date().getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+            isBreached = diffHours > SLA_BREACH_HOURS;
+            isWarning = diffHours > SLA_WARNING_HOURS && !isBreached;
           }
 
           return (
             <div className="flex flex-col gap-1">
               <span className="text-sm text-gray-500 whitespace-nowrap">{dateStr}</span>
-              {isBreached && <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded w-max tracking-wide">SLA BREACHED</span>}
-              {isWarning && <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded w-max tracking-wide">SLA WARNING</span>}
+              {isBreached && (
+                <span className="text-[10px] font-bold text-red-600 bg-red-100 px-1.5 py-0.5 rounded w-max tracking-wide">
+                  SLA BREACHED
+                </span>
+              )}
+              {isWarning && (
+                <span className="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded w-max tracking-wide">
+                  SLA WARNING
+                </span>
+              )}
             </div>
           );
         },
       }),
-      ...(role === "superadmin"
+      ...(canDelete
         ? [
             columnHelper.display({
               id: "actions",
               header: "Actions",
+              enableSorting: false,
               cell: (info) => (
                 <button
                   onClick={(e) => {
@@ -810,6 +919,9 @@ export function AdminDashboard({
       handleEditDescription,
       handleDelete,
       slaEnabled,
+      canDelete,
+      canEditDescription,
+      canAssignDepartment,
     ],
   );
 
@@ -839,29 +951,33 @@ export function AdminDashboard({
   return (
     <div
       className={
-        role === "department_admin"
+        role === "department_admin" || role === "field_worker"
           ? "px-4 max-w-7xl mx-auto flex flex-col pb-12 w-full mt-6"
           : "min-h-screen pt-20 px-4 max-w-7xl mx-auto flex flex-col pb-12"
       }
     >
-      <div className="mb-6 flex justify-between items-end flex-wrap gap-4">
+      <div className="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2 text-[color:var(--text-primary)]">
             {role === "department_admin" && department
               ? `${department} Portal`
-              : role === "admin"
-                ? "City Dispatch Dashboard"
-                : "Central Command Dashboard"}
+              : role === "field_worker" && department
+                ? `${department} — Field View`
+                : role === "admin"
+                  ? "City Dispatch Dashboard"
+                  : "Central Command Dashboard"}
           </h1>
           <p className="text-[color:var(--text-secondary)]">
             {role === "department_admin" && department
               ? `Manage and resolve issues assigned to the ${department} department.`
-              : role === "admin"
-                ? "Assign incoming reports to departments and monitor resolution progress."
-                : "Full system oversight — all departments, all issues, all controls."}
+              : role === "field_worker" && department
+                ? `View and update issues assigned to your team in ${department}.`
+                : role === "admin"
+                  ? "Assign incoming reports to departments and monitor resolution progress."
+                  : "Full system oversight — all departments, all issues, all controls."}
           </p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <button
             onClick={() => fetchComplaints(true)}
             disabled={refreshing}
@@ -870,7 +986,7 @@ export function AdminDashboard({
             <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
             {refreshing ? "Refreshing…" : "Refresh"}
           </button>
-          {role === "superadmin" && (
+          {canDelete && (
             <button
               onClick={toggleSelectMode}
               className={`flex items-center gap-2 text-sm px-4 py-2 rounded-lg transition-colors shadow-sm font-medium border ${
@@ -898,11 +1014,11 @@ export function AdminDashboard({
         </div>
       </div>
 
-      {role === "superadmin" && (
-        <div className="flex items-center gap-4 border-b border-gray-200 mb-6">
+      {hasTabs && (
+        <div className="flex items-center gap-8 border-b border-gray-200 mb-8 overflow-x-auto px-2">
           <button
             onClick={() => setActiveTab("tickets")}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors ${
+            className={`pb-4 px-2 text-base font-semibold border-b-2 transition-all duration-200 whitespace-nowrap ${
               activeTab === "tickets"
                 ? "border-blue-600 text-blue-600"
                 : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
@@ -910,45 +1026,77 @@ export function AdminDashboard({
           >
             Ticket Dispatch
           </button>
-          <button
-            onClick={() => setActiveTab("staff")}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === "staff"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            Staff Management
-          </button>
-          <button
-            onClick={() => setActiveTab("analytics")}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === "analytics"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            Analytics & SLAs
-          </button>
-          <button
-            onClick={() => setActiveTab("audit")}
-            className={`pb-3 text-sm font-medium border-b-2 transition-colors flex items-center gap-2 ${
-              activeTab === "audit"
-                ? "border-blue-600 text-blue-600"
-                : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
-            }`}
-          >
-            Audit Logs
-          </button>
+          {canSeeStaff && (
+            <button
+              onClick={() => setActiveTab("staff")}
+              className={`pb-4 px-2 text-base font-semibold border-b-2 transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "staff"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Staff Management
+            </button>
+          )}
+          {canSeeAnalytics && (
+            <button
+              onClick={() => setActiveTab("analytics")}
+              className={`pb-4 px-2 text-base font-semibold border-b-2 transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "analytics"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Analytics & SLAs
+            </button>
+          )}
+          {canSeeAudit && (
+            <button
+              onClick={() => setActiveTab("audit")}
+              className={`pb-4 px-2 text-base font-semibold border-b-2 transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "audit"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              Audit Logs
+            </button>
+          )}
+          {canSeeHealth && (
+            <button
+              onClick={() => setActiveTab("health")}
+              className={`pb-4 px-2 text-base font-semibold border-b-2 transition-all duration-200 flex items-center gap-2 whitespace-nowrap ${
+                activeTab === "health"
+                  ? "border-blue-600 text-blue-600"
+                  : "border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300"
+              }`}
+            >
+              System Health
+            </button>
+          )}
         </div>
       )}
 
-      {activeTab === "staff" ? (
+      {activeTab === "staff" && canSeeStaff ? (
         <StaffManagementTab />
-      ) : activeTab === "analytics" ? (
-        <AnalyticsTab complaints={complaints} slaEnabled={slaEnabled} setSlaEnabled={setSlaEnabled} />
-      ) : activeTab === "audit" ? (
+      ) : activeTab === "analytics" && canSeeAnalytics ? (
+        <AnalyticsTab
+          complaints={complaints}
+          slaEnabled={slaEnabled}
+          setSlaEnabled={setSlaEnabled}
+        />
+      ) : activeTab === "audit" && canSeeAudit ? (
         <AuditLogsTab />
+      ) : activeTab === "health" && canSeeHealth ? (
+        <Suspense
+          fallback={
+            <div className="flex justify-center py-20">
+              <Loader2 className="animate-spin text-blue-500" size={40} />
+            </div>
+          }
+        >
+          <SystemHealthTab />
+        </Suspense>
       ) : (
         <>
           {/* Analytics Cards */}
@@ -1054,19 +1202,33 @@ export function AdminDashboard({
                   <Loader2 className="animate-spin text-blue-600" size={32} />
                 </div>
               ) : (
-                <ClientOnly fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={32} /></div>}>
-                  <Suspense fallback={<div className="w-full h-full flex items-center justify-center"><Loader2 className="animate-spin text-blue-500" size={32} /></div>}>
-                    <AdminMap
-                      complaints={mapComplaints}
-                      focusedLocation={focusedLocation}
-                      onImageClick={handleImageClick}
-                      showHeatmap={showHeatmap}
-                      adminLocation={adminLocation}
-                      onLocateMe={detectLocation}
-                      isLocating={isDetecting}
-                    />
-                  </Suspense>
-                </ClientOnly>
+                <MapErrorBoundary>
+                  <ClientOnly
+                    fallback={
+                      <div className="w-full h-full flex items-center justify-center">
+                        <Loader2 className="animate-spin text-blue-500" size={32} />
+                      </div>
+                    }
+                  >
+                    <Suspense
+                      fallback={
+                        <div className="w-full h-full flex items-center justify-center">
+                          <Loader2 className="animate-spin text-blue-500" size={32} />
+                        </div>
+                      }
+                    >
+                      <AdminMap
+                        complaints={mapComplaints}
+                        focusedLocation={focusedLocation}
+                        onImageClick={handleImageClick}
+                        showHeatmap={showHeatmap}
+                        adminLocation={adminLocation}
+                        onLocateMe={detectLocation}
+                        isLocating={isDetecting}
+                      />
+                    </Suspense>
+                  </ClientOnly>
+                </MapErrorBoundary>
               )}
             </div>
 
@@ -1126,51 +1288,68 @@ export function AdminDashboard({
                     <thead>
                       {table.getHeaderGroups().map((headerGroup) => (
                         <tr key={headerGroup.id} className="border-b border-gray-200 bg-white">
-                          {headerGroup.headers.map((header) => (
-                            <th
-                              key={header.id}
-                              className="px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider cursor-pointer hover:bg-gray-50 transition-colors"
-                              onClick={header.column.getToggleSortingHandler()}
-                            >
-                              <div className="flex items-center gap-2">
-                                {flexRender(header.column.columnDef.header, header.getContext())}
-                                <ArrowUpDown
-                                  size={12}
-                                  className={
-                                    header.column.getIsSorted() ? "text-blue-600" : "text-gray-300"
-                                  }
-                                />
-                              </div>
-                            </th>
-                          ))}
+                          {headerGroup.headers.map((header) => {
+                            const canSort = header.column.getCanSort();
+                            return (
+                              <th
+                                key={header.id}
+                                className={`px-6 py-3 text-xs font-medium text-gray-500 uppercase tracking-wider transition-colors ${canSort ? "cursor-pointer hover:bg-gray-50" : ""}`}
+                                onClick={
+                                  canSort ? header.column.getToggleSortingHandler() : undefined
+                                }
+                              >
+                                <div className="flex items-center gap-2">
+                                  {flexRender(header.column.columnDef.header, header.getContext())}
+                                  {canSort && (
+                                    <ArrowUpDown
+                                      size={12}
+                                      className={
+                                        header.column.getIsSorted()
+                                          ? "text-blue-600"
+                                          : "text-gray-300"
+                                      }
+                                    />
+                                  )}
+                                </div>
+                              </th>
+                            );
+                          })}
                         </tr>
                       ))}
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-100">
-                      {table.getRowModel().rows.map((row) => (
-                        <tr
-                          key={row.id}
-                          className="hover:bg-blue-50/50 transition-colors cursor-pointer group"
-                          onClick={(e) => {
-                            const tag = (e.target as HTMLElement).tagName.toLowerCase();
-                            if (
-                              tag === "select" ||
-                              tag === "option" ||
-                              tag === "button" ||
-                              tag === "img"
-                            )
-                              return;
-                            const coords = row.original.coordinates;
-                            if (coords) setFocusedLocation([coords.lat, coords.lng]);
-                          }}
-                        >
-                          {row.getVisibleCells().map((cell) => (
-                            <td key={cell.id} className="px-6 py-3">
-                              {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
+                    <tbody
+                      className={`bg-white divide-y divide-gray-100 ${isBulkDeleting ? "opacity-50 pointer-events-none" : ""}`}
+                    >
+                      {table.getRowModel().rows.map((row) => {
+                        const isSelected = row.getIsSelected();
+                        return (
+                          <tr
+                            key={row.id}
+                            className={`hover:bg-blue-50/50 transition-colors cursor-pointer group ${isSelected ? "bg-blue-50/70" : ""}`}
+                            onClick={(e) => {
+                              const tag = (e.target as HTMLElement).tagName.toLowerCase();
+                              if (
+                                tag === "select" ||
+                                tag === "option" ||
+                                tag === "button" ||
+                                tag === "img" ||
+                                tag === "input"
+                              )
+                                return;
+                              const coords = row.original.coordinates;
+                              if (coords && coords.lat != null && coords.lng != null) {
+                                setFocusedLocation([coords.lat, coords.lng]);
+                              }
+                            }}
+                          >
+                            {row.getVisibleCells().map((cell) => (
+                              <td key={cell.id} className="px-6 py-3">
+                                {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                              </td>
+                            ))}
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 )}
@@ -1210,6 +1389,20 @@ export function AdminDashboard({
                       Next
                     </button>
                   </div>
+                </div>
+              )}
+
+              {/* Server Pagination */}
+              {complaints.length > 0 && complaints.length % 500 === 0 && (
+                <div className="px-6 py-4 bg-gray-50 flex justify-center border-t border-gray-100">
+                  <button
+                    onClick={loadMoreComplaints}
+                    disabled={loadingMore}
+                    className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-600 bg-blue-50 border border-blue-100 rounded-lg hover:bg-blue-100 transition-colors disabled:opacity-50"
+                  >
+                    {loadingMore && <Loader2 size={16} className="animate-spin" />}
+                    {loadingMore ? "Loading..." : "Load Older Complaints from Server"}
+                  </button>
                 </div>
               )}
             </div>

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import { auth } from "../../lib/firebase";
 import { getAuditLogs } from "../../lib/api/admin.functions";
 import {
@@ -28,15 +28,66 @@ interface AuditLogEntry {
   timestamp: number | null;
 }
 
-const ACTION_CONFIG: Record<string, { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode }> = {
-  INVITE_STAFF: { label: "Staff Invited", color: "text-blue-700", bgColor: "bg-blue-50", borderColor: "border-blue-200", icon: <UserPlus size={14} /> },
-  REVOKE_INVITE: { label: "Invite Revoked", color: "text-red-700", bgColor: "bg-red-50", borderColor: "border-red-200", icon: <X size={14} /> },
-  RESEND_INVITE: { label: "Invite Resent", color: "text-amber-700", bgColor: "bg-amber-50", borderColor: "border-amber-200", icon: <Mail size={14} /> },
-  ACCEPT_INVITE: { label: "Invite Accepted", color: "text-green-700", bgColor: "bg-green-50", borderColor: "border-green-200", icon: <UserCheck size={14} /> },
-  REJECT_INVITE: { label: "Invite Rejected", color: "text-slate-700", bgColor: "bg-slate-50", borderColor: "border-slate-200", icon: <UserX size={14} /> },
-  TOGGLE_STAFF_STATUS: { label: "Status Changed", color: "text-purple-700", bgColor: "bg-purple-50", borderColor: "border-purple-200", icon: <Shield size={14} /> },
-  UPDATE_COMPLAINT: { label: "Complaint Updated", color: "text-indigo-700", bgColor: "bg-indigo-50", borderColor: "border-indigo-200", icon: <Edit3 size={14} /> },
-  BULK_DELETE_COMPLAINTS: { label: "Complaints Deleted", color: "text-rose-700", bgColor: "bg-rose-50", borderColor: "border-rose-200", icon: <Trash2 size={14} /> },
+const ACTION_CONFIG: Record<
+  string,
+  { label: string; color: string; bgColor: string; borderColor: string; icon: React.ReactNode }
+> = {
+  INVITE_STAFF: {
+    label: "Staff Invited",
+    color: "text-blue-700",
+    bgColor: "bg-blue-50",
+    borderColor: "border-blue-200",
+    icon: <UserPlus size={14} />,
+  },
+  REVOKE_INVITE: {
+    label: "Invite Revoked",
+    color: "text-red-700",
+    bgColor: "bg-red-50",
+    borderColor: "border-red-200",
+    icon: <X size={14} />,
+  },
+  RESEND_INVITE: {
+    label: "Invite Resent",
+    color: "text-amber-700",
+    bgColor: "bg-amber-50",
+    borderColor: "border-amber-200",
+    icon: <Mail size={14} />,
+  },
+  ACCEPT_INVITE: {
+    label: "Invite Accepted",
+    color: "text-green-700",
+    bgColor: "bg-green-50",
+    borderColor: "border-green-200",
+    icon: <UserCheck size={14} />,
+  },
+  REJECT_INVITE: {
+    label: "Invite Rejected",
+    color: "text-slate-700",
+    bgColor: "bg-slate-50",
+    borderColor: "border-slate-200",
+    icon: <UserX size={14} />,
+  },
+  TOGGLE_STAFF_STATUS: {
+    label: "Status Changed",
+    color: "text-purple-700",
+    bgColor: "bg-purple-50",
+    borderColor: "border-purple-200",
+    icon: <Shield size={14} />,
+  },
+  UPDATE_COMPLAINT: {
+    label: "Complaint Updated",
+    color: "text-indigo-700",
+    bgColor: "bg-indigo-50",
+    borderColor: "border-indigo-200",
+    icon: <Edit3 size={14} />,
+  },
+  BULK_DELETE_COMPLAINTS: {
+    label: "Complaints Deleted",
+    color: "text-rose-700",
+    bgColor: "bg-rose-50",
+    borderColor: "border-rose-200",
+    icon: <Trash2 size={14} />,
+  },
 };
 
 const FILTER_OPTIONS = [
@@ -62,14 +113,21 @@ function formatRelativeTime(ts: number | null): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Date(ts).toLocaleDateString("en-IN", { day: "numeric", month: "short", year: "numeric" });
+  return new Date(ts).toLocaleDateString("en-IN", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  });
 }
 
 function formatFullDate(ts: number | null): string {
   if (!ts) return "";
   return new Date(ts).toLocaleString("en-IN", {
-    day: "numeric", month: "short", year: "numeric",
-    hour: "2-digit", minute: "2-digit",
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
   });
 }
 
@@ -102,7 +160,7 @@ export function AuditLogsTab() {
   const [filter, setFilter] = useState("all");
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     try {
       setRefreshing(true);
       const token = await auth.currentUser?.getIdToken();
@@ -118,11 +176,11 @@ export function AuditLogsTab() {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, [filter]);
 
   useEffect(() => {
     fetchLogs();
-  }, [filter]);
+  }, [fetchLogs]);
 
   if (loading) {
     return (
@@ -154,11 +212,19 @@ export function AuditLogsTab() {
               className="appearance-none pl-8 pr-8 py-2 text-sm border border-gray-200 rounded-lg bg-white focus:ring-2 focus:ring-blue-500 focus:outline-none cursor-pointer"
             >
               {FILTER_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>{opt.label}</option>
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
               ))}
             </select>
-            <Filter size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-            <ChevronDown size={14} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+            <Filter
+              size={14}
+              className="absolute left-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
+            <ChevronDown
+              size={14}
+              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none"
+            />
           </div>
 
           <button
@@ -177,13 +243,19 @@ export function AuditLogsTab() {
           <div className="px-6 py-16 text-center text-gray-400">
             <ScrollText size={40} className="mx-auto mb-3 opacity-40" />
             <p className="font-medium">No audit logs found</p>
-            <p className="text-sm mt-1">Actions will appear here as administrators use the platform.</p>
+            <p className="text-sm mt-1">
+              Actions will appear here as administrators use the platform.
+            </p>
           </div>
         )}
 
         {logs.map((entry) => {
           const config = ACTION_CONFIG[entry.action] || {
-            label: entry.action, color: "text-gray-700", bgColor: "bg-gray-50", borderColor: "border-gray-200", icon: <Edit3 size={14} />,
+            label: entry.action,
+            color: "text-gray-700",
+            bgColor: "bg-gray-50",
+            borderColor: "border-gray-200",
+            icon: <Edit3 size={14} />,
           };
           const isExpanded = expandedId === entry.id;
 
@@ -195,17 +267,24 @@ export function AuditLogsTab() {
             >
               <div className="flex items-start gap-4">
                 {/* Icon */}
-                <div className={`mt-0.5 w-8 h-8 rounded-full ${config.bgColor} flex items-center justify-center shrink-0 ${config.color}`}>
+                <div
+                  className={`mt-0.5 w-8 h-8 rounded-full ${config.bgColor} flex items-center justify-center shrink-0 ${config.color}`}
+                >
                   {config.icon}
                 </div>
 
                 {/* Content */}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2 flex-wrap">
-                    <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${config.bgColor} ${config.color} border ${config.borderColor}`}>
+                    <span
+                      className={`inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-semibold ${config.bgColor} ${config.color} border ${config.borderColor}`}
+                    >
                       {config.label}
                     </span>
-                    <span className="text-sm text-gray-500 truncate" title={formatFullDate(entry.timestamp)}>
+                    <span
+                      className="text-sm text-gray-500 truncate"
+                      title={formatFullDate(entry.timestamp)}
+                    >
                       {formatRelativeTime(entry.timestamp)}
                     </span>
                   </div>
@@ -219,7 +298,9 @@ export function AuditLogsTab() {
                   {/* Expanded Details */}
                   {isExpanded && (
                     <div className="mt-3 p-3 bg-slate-50 rounded-lg border border-slate-100 text-xs font-mono text-slate-600 overflow-auto max-h-40">
-                      <pre className="whitespace-pre-wrap">{JSON.stringify(entry.details, null, 2)}</pre>
+                      <pre className="whitespace-pre-wrap">
+                        {JSON.stringify(entry.details, null, 2)}
+                      </pre>
                       {entry.complaintId && (
                         <p className="mt-2 text-slate-500">Complaint ID: {entry.complaintId}</p>
                       )}

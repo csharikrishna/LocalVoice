@@ -1,5 +1,6 @@
 import "@tanstack/react-start/server-only";
 import { getFirebaseAdminDb, getFirebaseAdminAuth } from "../firebase-admin.server";
+import { getAdminEmail, getAdminUsername, getAppDomain, getEnv } from "../env.server";
 
 // Helper to sanitize timestamps for JSON serialization
 function serializeTimestamp(ts: any) {
@@ -14,7 +15,12 @@ function sanitize(obj: any): any {
   if (obj === null || obj === undefined) return obj;
   if (obj.toDate && typeof obj.toDate === "function") return obj.toDate().toISOString();
   // If it's a Firestore GeoPoint (has latitude/longitude properties and is not a plain object)
-  if (typeof obj === "object" && 'latitude' in obj && 'longitude' in obj && typeof obj.isEqual === 'function') {
+  if (
+    typeof obj === "object" &&
+    "latitude" in obj &&
+    "longitude" in obj &&
+    typeof obj.isEqual === "function"
+  ) {
     return { lat: obj.latitude, lng: obj.longitude };
   }
   if (Array.isArray(obj)) return obj.map(sanitize);
@@ -49,30 +55,21 @@ function toPublicComplaint(doc: any) {
 export async function handleGetPublicComplaints() {
   const db = getFirebaseAdminDb();
   if (!db) return [];
-  const snapshot = await db.collection("complaints")
-    .orderBy("timestamp", "desc")
-    .limit(100)
-    .get();
+  const snapshot = await db.collection("complaints").orderBy("timestamp", "desc").limit(100).get();
   return snapshot.docs.map(toPublicComplaint);
 }
 
 export async function handleGetTrendingComplaints() {
   const db = getFirebaseAdminDb();
   if (!db) return [];
-  const snapshot = await db.collection("complaints")
-    .orderBy("upvotes", "desc")
-    .limit(5)
-    .get();
+  const snapshot = await db.collection("complaints").orderBy("upvotes", "desc").limit(5).get();
   return snapshot.docs.map(toPublicComplaint);
 }
 
 export async function handleGetComplaintByToken(token: string) {
   const db = getFirebaseAdminDb();
   if (!db) return null;
-  const snapshot = await db.collection("complaints")
-    .where("token", "==", token)
-    .limit(1)
-    .get();
+  const snapshot = await db.collection("complaints").where("token", "==", token).limit(1).get();
   if (snapshot.empty) return null;
   return toPublicComplaint(snapshot.docs[0]);
 }
@@ -80,14 +77,12 @@ export async function handleGetComplaintByToken(token: string) {
 export async function handleGetMyReports(ids: string[]) {
   const db = getFirebaseAdminDb();
   if (!db || ids.length === 0) return [];
-  
+
   // Firestore IN queries are limited to 10 items
   const results = [];
   for (let i = 0; i < ids.length; i += 10) {
     const chunk = ids.slice(i, i + 10);
-    const snapshot = await db.collection("complaints")
-      .where("__name__", "in", chunk)
-      .get();
+    const snapshot = await db.collection("complaints").where("__name__", "in", chunk).get();
     results.push(...snapshot.docs.map(toPublicComplaint));
   }
   // Sort by timestamp desc since IN doesn't guarantee order
@@ -98,18 +93,18 @@ export async function handleGetMyReports(ids: string[]) {
   });
 }
 
-export async function handleGetAdminComplaints(adminToken: string) {
+export async function handleGetAdminComplaints(adminToken: string, cursor?: string) {
   const auth = getFirebaseAdminAuth();
   const db = getFirebaseAdminDb();
   if (!auth || !db) throw new Error("Server not configured");
 
   const decodedToken = await auth.verifyIdToken(adminToken);
-  
+
   // Fetch admin role
   const adminDoc = await db.collection("admins").doc(decodedToken.uid).get();
   let role = null;
   let department = null;
-  
+
   if (adminDoc.exists) {
     role = adminDoc.data()?.role;
     department = adminDoc.data()?.department;
@@ -121,12 +116,13 @@ export async function handleGetAdminComplaints(adminToken: string) {
     }
   }
 
-  const domain = (import.meta.env.VITE_APP_NAME || process.env.VITE_APP_NAME || "LocalVoice").toLowerCase().replace(/\s+/g, "");
-  const isMasterAdmin = 
-    decodedToken.email === import.meta.env.VITE_ADMIN_EMAIL ||
-    decodedToken.email === process.env.VITE_ADMIN_EMAIL ||
-    decodedToken.email === process.env.ADMIN_EMAIL ||
-    ((import.meta.env.VITE_ADMIN_USERNAME || process.env.VITE_ADMIN_USERNAME) && decodedToken.email === `${import.meta.env.VITE_ADMIN_USERNAME || process.env.VITE_ADMIN_USERNAME}@${domain}.admin`);
+  const domain = getAppDomain();
+  const adminEmail = getAdminEmail();
+  const adminUsername = getAdminUsername();
+
+  const isMasterAdmin =
+    (!!adminEmail && decodedToken.email === adminEmail) ||
+    (!!adminUsername && decodedToken.email === `${adminUsername}@${domain}.admin`);
 
   if (!role && isMasterAdmin) {
     role = "superadmin";
@@ -138,17 +134,26 @@ export async function handleGetAdminComplaints(adminToken: string) {
 
   // Build query based on scope
   let complaintsQuery: FirebaseFirestore.Query = db.collection("complaints");
-  
+
   if (role === "department_admin" || role === "field_worker") {
     if (!department) throw new Error("Unauthorized: Department admin has no department assigned");
     complaintsQuery = complaintsQuery.where("department", "==", department);
   }
 
-  const snapshot = await complaintsQuery.orderBy("timestamp", "desc").get();
-  
+  complaintsQuery = complaintsQuery.orderBy("timestamp", "desc").limit(500);
+
+  if (cursor) {
+    const cursorDoc = await db.collection("complaints").doc(cursor).get();
+    if (cursorDoc.exists) {
+      complaintsQuery = complaintsQuery.startAfter(cursorDoc);
+    }
+  }
+
+  const snapshot = await complaintsQuery.get();
+
   // Return FULL complaint data to admins, including internal fields if any
   // We use a deep clone to strip Firestore prototypes that break superjson serialization
-  return snapshot.docs.map(doc => {
+  return snapshot.docs.map((doc) => {
     const data = doc.data();
 
     return {

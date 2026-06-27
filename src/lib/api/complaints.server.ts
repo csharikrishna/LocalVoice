@@ -61,11 +61,22 @@ async function verifyRecaptcha(token: string) {
   }
 }
 
-export async function handleSendReceiptEmail(data: { token: string; email: string; base64Image: string }) {
+export async function handleSendReceiptEmail(data: {
+  token: string;
+  email: string;
+  base64Image: string;
+}) {
   if (!data.email) return { ok: false };
   try {
     const { sendSubmissionEmail } = await import("../email.server");
-    await sendSubmissionEmail(data.email, data.token, "Your Local Issue", "various", null, data.base64Image);
+    await sendSubmissionEmail(
+      data.email,
+      data.token,
+      "Your Local Issue",
+      "various",
+      null,
+      data.base64Image,
+    );
     return { ok: true };
   } catch (err) {
     console.error("Failed to send receipt email:", err);
@@ -242,7 +253,11 @@ async function findDuplicate(category: CategoryId, coordinates: Coords | null) {
   return findDuplicateWithRest(category, coordinates);
 }
 
-function buildComplaintDocument(input: SubmitComplaintInput, token: string, photoURL: string | null) {
+function buildComplaintDocument(
+  input: SubmitComplaintInput,
+  token: string,
+  photoURL: string | null,
+) {
   const description = sanitiseText(input.description);
   return {
     category: input.category,
@@ -263,11 +278,17 @@ function buildComplaintDocument(input: SubmitComplaintInput, token: string, phot
   };
 }
 
-async function createComplaintWithAdmin(input: SubmitComplaintInput, token: string, photoURL: string | null) {
+async function createComplaintWithAdmin(
+  input: SubmitComplaintInput,
+  token: string,
+  photoURL: string | null,
+) {
   const db = getFirebaseAdminDb();
   if (!db) return null;
 
-  const docRef = await db.collection("complaints").add(buildComplaintDocument(input, token, photoURL));
+  const docRef = await db
+    .collection("complaints")
+    .add(buildComplaintDocument(input, token, photoURL));
   return docRef.id;
 }
 
@@ -304,7 +325,11 @@ function toRestFields(input: SubmitComplaintInput, token: string, photoURL: stri
   };
 }
 
-async function createComplaintWithRest(input: SubmitComplaintInput, token: string, photoURL: string | null) {
+async function createComplaintWithRest(
+  input: SubmitComplaintInput,
+  token: string,
+  photoURL: string | null,
+) {
   const { projectId, apiKey } = getRestConfig();
   const response = await fetch(
     `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/complaints?key=${apiKey}`,
@@ -326,7 +351,11 @@ async function createComplaintWithRest(input: SubmitComplaintInput, token: strin
   return id;
 }
 
-async function createComplaint(input: SubmitComplaintInput, token: string, photoURL: string | null) {
+async function createComplaint(
+  input: SubmitComplaintInput,
+  token: string,
+  photoURL: string | null,
+) {
   try {
     if (getFirebaseAdminDb()) {
       const adminId = await createComplaintWithAdmin(input, token, photoURL);
@@ -341,7 +370,7 @@ async function createComplaint(input: SubmitComplaintInput, token: string, photo
 
 export async function handleSubmitComplaint(data: SubmitComplaintInput) {
   const rateLimitKey = getRateLimitKey(data.clientId);
-  const rateLimit = checkServerReportRateLimit(rateLimitKey);
+  const rateLimit = await checkServerReportRateLimit(rateLimitKey);
   if (!rateLimit.allowed) {
     throw new Error("You have reached the limit of 24 reports for today.");
   }
@@ -369,7 +398,7 @@ export async function handleSubmitComplaint(data: SubmitComplaintInput) {
 
   const token = generateTrackingToken();
   const id = await createComplaint(data, token, photoURL);
-  recordServerReportSubmission(rateLimitKey);
+  await recordServerReportSubmission(rateLimitKey);
 
   // Email sending is now deferred to handleSendReceiptEmail which attaches the card image
   // if (data.email) {
@@ -390,12 +419,12 @@ export async function handleUpvoteComplaint(id: string, email?: string) {
   const db = await getFirebaseAdminDb();
   if (!db) throw new Error("Database not initialized");
   const docRef = db.collection("complaints").doc(id);
-  
+
   const updates: any = { upvotes: FieldValue.increment(1) };
   if (email) {
     updates.subscriberEmails = FieldValue.arrayUnion(email);
   }
-  
+
   await docRef.update(updates);
   return { ok: true, id };
 }

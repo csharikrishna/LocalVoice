@@ -22,7 +22,13 @@ interface CivicHeroCardProps {
   emailSent?: boolean;
 }
 
-export function CivicHeroCard({ token, category, location, onReset, emailSent }: CivicHeroCardProps) {
+export function CivicHeroCard({
+  token,
+  category,
+  location,
+  onReset,
+  emailSent,
+}: CivicHeroCardProps) {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [sendingReceipt, setSendingReceipt] = useState(emailSent === true);
   const receiptSentRef = useRef(false);
@@ -34,13 +40,13 @@ export function CivicHeroCard({ token, category, location, onReset, emailSent }:
       receiptSentRef.current = true;
       const sendEmail = async () => {
         // Small delay to ensure the card is fully rendered in the DOM
-        await new Promise(r => setTimeout(r, 500));
+        await new Promise((r) => setTimeout(r, 500));
         const cardElement = document.getElementById("official-report-dossier");
         if (!cardElement) {
           setSendingReceipt(false);
           return;
         }
-        
+
         try {
           const dataUrl = await toPng(cardElement, {
             cacheBust: true,
@@ -49,7 +55,7 @@ export function CivicHeroCard({ token, category, location, onReset, emailSent }:
             skipFonts: true,
             filter: (node) => (node as HTMLElement).id !== "scanner-line",
           });
-          
+
           const email = localStorage.getItem("localvoice_last_email");
           if (email) {
             await sendReceiptEmail({ data: { token, email, base64Image: dataUrl } });
@@ -60,7 +66,7 @@ export function CivicHeroCard({ token, category, location, onReset, emailSent }:
           setSendingReceipt(false);
         }
       };
-      
+
       sendEmail();
     }
   }, [emailSent, token]);
@@ -88,8 +94,10 @@ export function CivicHeroCard({ token, category, location, onReset, emailSent }:
       // On mobile (especially iOS Safari), programmatic downloads of Data URLs often silently fail.
       // The most reliable way to "Save" an image on mobile is using the native Share sheet.
       let sharedNatively = false;
-      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
-      
+      const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(
+        navigator.userAgent,
+      );
+
       if (isMobile && typeof navigator !== "undefined" && navigator.share) {
         try {
           const blob = await (await fetch(dataUrl)).blob();
@@ -139,8 +147,12 @@ export function CivicHeroCard({ token, category, location, onReset, emailSent }:
       className="mt-6 flex flex-col items-center gap-4"
     >
       {(emailSent || sendingReceipt) && (
-        <div className={`w-full px-4 py-3 rounded-lg border text-sm font-medium text-center shadow-sm transition-colors ${sendingReceipt ? 'bg-blue-50 text-blue-800 border-blue-200' : 'bg-emerald-50 text-emerald-800 border-emerald-200'}`}>
-          {sendingReceipt ? '⏳ Generating and sending your receipt...' : '✅ A copy of this receipt and tracking link has been sent to your email!'}
+        <div
+          className={`w-full px-4 py-3 rounded-lg border text-sm font-medium text-center shadow-sm transition-colors ${sendingReceipt ? "bg-blue-50 text-blue-800 border-blue-200" : "bg-emerald-50 text-emerald-800 border-emerald-200"}`}
+        >
+          {sendingReceipt
+            ? "⏳ Generating and sending your receipt..."
+            : "✅ A copy of this receipt and tracking link has been sent to your email!"}
         </div>
       )}
 

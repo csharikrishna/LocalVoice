@@ -25,37 +25,29 @@ export function AdminLogin() {
     const domain = (import.meta.env.VITE_APP_NAME || "LocalVoice")
       .toLowerCase()
       .replace(/\s+/g, "");
-    
+
     const cleanUsername = username.trim();
     const cleanPassword = password.trim();
     // Support both short usernames (e.g. 'electrical') and full emails (e.g. 'electrical@localvoice.admin')
-    const adminEmail = cleanUsername.includes("@") ? cleanUsername : `${cleanUsername}@${domain}.admin`;
-    
-    console.log("Attempting login with email:", adminEmail);
+    const adminEmail = cleanUsername.includes("@")
+      ? cleanUsername
+      : `${cleanUsername}@${domain}.admin`;
 
     try {
       await signInWithEmailAndPassword(auth, adminEmail, cleanPassword);
     } catch (err) {
       const authError = getAuthError(err);
-      // If the superadmin account was deleted from Firebase Auth, recreate it on the fly
       if (
-        username === import.meta.env.VITE_ADMIN_USERNAME &&
-        (authError.code === "auth/invalid-credential" || authError.code === "auth/user-not-found")
+        authError.code === "auth/invalid-credential" ||
+        authError.code === "auth/user-not-found"
       ) {
-        try {
-          const { createUserWithEmailAndPassword } = await import("firebase/auth");
-          await createUserWithEmailAndPassword(auth, adminEmail, password);
-          return;
-        } catch (createErr) {
-          const createError = getAuthError(createErr);
-          if (createError.code === "auth/email-already-in-use") {
-            setError(
-              "Invalid credentials. If you forgot your password, please use the Magic Link below.",
-            );
-          } else {
-            setError("Error initializing superadmin: " + (createError.message || "Unknown error"));
-          }
-        }
+        setError(
+          "Invalid credentials. Please check your username and password. If you forgot your password, use the Magic Link below.",
+        );
+      } else if (authError.code === "auth/too-many-requests") {
+        setError(
+          "Too many failed login attempts. Please try again later or use the Magic Link below.",
+        );
       } else {
         setError("Invalid credentials. Please check your username and password.");
       }
@@ -114,6 +106,7 @@ export function AdminLogin() {
               onChange={(e) => setUsername(e.target.value)}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="admin_user"
+              autoComplete="username"
             />
           </div>
           <div>
@@ -125,6 +118,7 @@ export function AdminLogin() {
               onChange={(e) => setPassword(e.target.value)}
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
               placeholder="••••••••"
+              autoComplete="current-password"
             />
           </div>
 

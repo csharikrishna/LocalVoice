@@ -7,7 +7,7 @@ let adminAuth: Auth | undefined;
 
 /**
  * Load service account credentials.
- * 
+ *
  * Strategy (in order — env vars first for serverless compatibility):
  * 1. Construct from individual FIREBASE_* env vars (works on Vercel, Railway, etc.)
  * 2. Read firebase-service-account.json from project root (local dev)
@@ -15,7 +15,10 @@ let adminAuth: Auth | undefined;
  */
 function loadCredentials() {
   // Strategy 1: Individual env vars (primary — works on all platforms)
-  let projectId = process.env.FIREBASE_PROJECT_ID || process.env.GOOGLE_CLOUD_PROJECT || process.env.VITE_FIREBASE_PROJECT_ID;
+  let projectId =
+    process.env.FIREBASE_PROJECT_ID ||
+    process.env.GOOGLE_CLOUD_PROJECT ||
+    process.env.VITE_FIREBASE_PROJECT_ID;
   let clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
   let privateKey = process.env.FIREBASE_PRIVATE_KEY;
 
@@ -78,9 +81,9 @@ function ensureInitialized() {
     if (!creds) {
       console.error(
         "Firebase Admin SDK: No credentials found. Checked:\n" +
-        "  1. FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY + FIREBASE_PROJECT_ID env vars\n" +
-        "  2. firebase-service-account.json in project root\n" +
-        "  3. GOOGLE_APPLICATION_CREDENTIALS env var"
+          "  1. FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY + FIREBASE_PROJECT_ID env vars\n" +
+          "  2. firebase-service-account.json in project root\n" +
+          "  3. GOOGLE_APPLICATION_CREDENTIALS env var",
       );
       throw new Error("Firebase Admin SDK credentials not found.");
     }
